@@ -46,7 +46,7 @@ func SetupRoutes(
 		doctors := v1.Group("/doctors")
 		{
 			doctors.POST("", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
-			doctors.GET("", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
+			doctors.GET("", doctorHandler.GetDoctorsByOrganization) // Implemented: GET /doctors?orgId=...&clinicId=...
 			doctors.GET("/:id", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
 			doctors.GET("/:id/availability", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
 			doctors.PUT("/:id", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })

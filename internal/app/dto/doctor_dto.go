@@ -89,3 +89,39 @@ func (req *UpdateDoctorRequest) ToEntityUpdate(existing *entities.Doctor) *entit
 	existing.UpdatedAt = time.Now()
 	return existing
 }
+
+// DoctorWithOrgInfoResponse represents a doctor with organization and clinic info
+type DoctorWithOrgInfoResponse struct {
+	ID                string  `json:"id"`
+	Name              string  `json:"name"`
+	Specialty         *string `json:"specialty,omitempty"`
+	DefaultUnitID     *string `json:"default_unit_id,omitempty"`
+	DefaultClinicID   *string `json:"default_clinic_id,omitempty"`
+	DefaultClinicName *string `json:"default_clinic_name,omitempty"`
+	OrgID             string  `json:"org_id"`
+	OrgName           string  `json:"org_name"`
+}
+
+// GetDoctorsByOrgRequest represents the query parameters for getting doctors by organization
+type GetDoctorsByOrgRequest struct {
+	OrgID    string  `form:"orgId" binding:"required"`
+	ClinicID *string `form:"clinicId"`
+}
+
+// ParsedOrgID returns the parsed UUID for OrgID
+func (req *GetDoctorsByOrgRequest) ParsedOrgID() (uuid.UUID, error) {
+	return uuid.Parse(req.OrgID)
+}
+
+// ParsedClinicID returns the parsed UUID for ClinicID if provided
+func (req *GetDoctorsByOrgRequest) ParsedClinicID() (*uuid.UUID, error) {
+	if req.ClinicID == nil || *req.ClinicID == "" {
+		return nil, nil
+	}
+	
+	clinicUUID, err := uuid.Parse(*req.ClinicID)
+	if err != nil {
+		return nil, err
+	}
+	return &clinicUUID, nil
+}

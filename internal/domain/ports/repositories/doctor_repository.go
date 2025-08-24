@@ -8,6 +8,14 @@ import (
 	"github.com/google/uuid"
 )
 
+// DoctorWithOrgInfo represents a doctor with organization and clinic information
+type DoctorWithOrgInfo struct {
+	Doctor            *entities.Doctor
+	DefaultClinicID   *uuid.UUID
+	DefaultClinicName *string
+	OrgName           string
+}
+
 // DoctorRepository defines the interface for doctor data operations
 type DoctorRepository interface {
 	// Create creates a new doctor
@@ -30,4 +38,7 @@ type DoctorRepository interface {
 
 	// Exists checks if a doctor exists by its ID
 	Exists(ctx context.Context, id uuid.UUID) (bool, error)
+
+	// GetByOrganizationID retrieves doctors by organization ID with clinic info
+	GetByOrganizationID(ctx context.Context, orgID uuid.UUID, clinicID *uuid.UUID) ([]*DoctorWithOrgInfo, error)
 }

@@ -158,3 +158,43 @@ func (uc *DoctorUseCase) DeleteDoctor(ctx context.Context, id uuid.UUID) error {
 
 	return uc.doctorRepo.Delete(ctx, id)
 }
+
+// GetDoctorsByOrganizationID retrieves doctors by organization ID with clinic information
+func (uc *DoctorUseCase) GetDoctorsByOrganizationID(ctx context.Context, orgID uuid.UUID, clinicID *uuid.UUID) ([]*dto.DoctorWithOrgInfoResponse, error) {
+	// Get doctors from repository
+	doctorsWithInfo, err := uc.doctorRepo.GetByOrganizationID(ctx, orgID, clinicID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to DTOs
+	var response []*dto.DoctorWithOrgInfoResponse
+	for _, doctorInfo := range doctorsWithInfo {
+		dto := &dto.DoctorWithOrgInfoResponse{
+			ID:        doctorInfo.Doctor.ID.String(),
+			Name:      doctorInfo.Doctor.Name,
+			Specialty: doctorInfo.Doctor.Specialty,
+			OrgID:     doctorInfo.Doctor.OrganizationID.String(),
+			OrgName:   doctorInfo.OrgName,
+		}
+
+		// Add unit ID if present
+		if doctorInfo.Doctor.DefaultUnitID != nil {
+			unitIDStr := doctorInfo.Doctor.DefaultUnitID.String()
+			dto.DefaultUnitID = &unitIDStr
+		}
+
+		// Add clinic info if present
+		if doctorInfo.DefaultClinicID != nil {
+			clinicIDStr := doctorInfo.DefaultClinicID.String()
+			dto.DefaultClinicID = &clinicIDStr
+		}
+		if doctorInfo.DefaultClinicName != nil {
+			dto.DefaultClinicName = doctorInfo.DefaultClinicName
+		}
+
+		response = append(response, dto)
+	}
+
+	return response, nil
+}
