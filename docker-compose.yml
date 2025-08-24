@@ -1,0 +1,49 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: dental_scheduler_db
+    environment:
+      POSTGRES_DB: dental_scheduler
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secure_dev_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - dental_scheduler_network
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dental_scheduler_api
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: ${DB_PASSWORD:-secure_dev_password}
+      DB_NAME: dental_scheduler
+      DB_SSL_MODE: disable
+      SERVER_PORT: 8080
+      SERVER_HOST: 0.0.0.0
+      LOG_LEVEL: info
+      CORS_ALLOWED_ORIGINS: http://localhost:5173,http://localhost:3000
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    networks:
+      - dental_scheduler_network
+    volumes:
+      - .:/app
+    working_dir: /app
+
+volumes:
+  postgres_data:
+
+networks:
+  dental_scheduler_network:
+    driver: bridge

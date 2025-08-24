@@ -1,0 +1,118 @@
+package dto
+
+import (
+	"time"
+
+	"dental-scheduler-backend/internal/domain/entities"
+
+	"github.com/google/uuid"
+)
+
+// CreateAppointmentRequest represents the request to create an appointment
+type CreateAppointmentRequest struct {
+	PatientID     uuid.UUID `json:"patient_id" binding:"required"`
+	DoctorID      uuid.UUID `json:"doctor_id" binding:"required"`
+	UnitID        uuid.UUID `json:"unit_id" binding:"required"`
+	TreatmentType *string   `json:"treatment_type,omitempty"`
+	StartTime     time.Time `json:"start_time" binding:"required"`
+	EndTime       time.Time `json:"end_time" binding:"required"`
+	Notes         *string   `json:"notes,omitempty"`
+}
+
+// UpdateAppointmentRequest represents the request to update an appointment
+type UpdateAppointmentRequest struct {
+	PatientID     uuid.UUID                   `json:"patient_id" binding:"required"`
+	DoctorID      uuid.UUID                   `json:"doctor_id" binding:"required"`
+	UnitID        uuid.UUID                   `json:"unit_id" binding:"required"`
+	TreatmentType *string                     `json:"treatment_type,omitempty"`
+	Status        *entities.AppointmentStatus `json:"status,omitempty"`
+	StartTime     time.Time                   `json:"start_time" binding:"required"`
+	EndTime       time.Time                   `json:"end_time" binding:"required"`
+	Notes         *string                     `json:"notes,omitempty"`
+}
+
+// AppointmentResponse represents the response for an appointment
+type AppointmentResponse struct {
+	ID            uuid.UUID                  `json:"id"`
+	PatientID     uuid.UUID                  `json:"patient_id"`
+	DoctorID      uuid.UUID                  `json:"doctor_id"`
+	UnitID        uuid.UUID                  `json:"unit_id"`
+	TreatmentType *string                    `json:"treatment_type,omitempty"`
+	Status        entities.AppointmentStatus `json:"status"`
+	StartTime     time.Time                  `json:"start_time"`
+	EndTime       time.Time                  `json:"end_time"`
+	Notes         *string                    `json:"notes,omitempty"`
+	CreatedAt     time.Time                  `json:"created_at"`
+	UpdatedAt     time.Time                  `json:"updated_at"`
+}
+
+// AppointmentWithDetailsResponse represents the response for an appointment with related entity details
+type AppointmentWithDetailsResponse struct {
+	ID            uuid.UUID                  `json:"id"`
+	Patient       *PatientResponse           `json:"patient"`
+	Doctor        *DoctorResponse            `json:"doctor"`
+	Unit          *UnitResponse              `json:"unit"`
+	TreatmentType *string                    `json:"treatment_type,omitempty"`
+	Status        entities.AppointmentStatus `json:"status"`
+	StartTime     time.Time                  `json:"start_time"`
+	EndTime       time.Time                  `json:"end_time"`
+	Notes         *string                    `json:"notes,omitempty"`
+	CreatedAt     time.Time                  `json:"created_at"`
+	UpdatedAt     time.Time                  `json:"updated_at"`
+}
+
+// RescheduleAppointmentRequest represents the request to reschedule an appointment
+type RescheduleAppointmentRequest struct {
+	StartTime time.Time `json:"start_time" binding:"required"`
+	EndTime   time.Time `json:"end_time" binding:"required"`
+}
+
+// ToEntity converts CreateAppointmentRequest to entities.Appointment
+func (req *CreateAppointmentRequest) ToEntity() *entities.Appointment {
+	return &entities.Appointment{
+		ID:            uuid.New(),
+		PatientID:     req.PatientID,
+		DoctorID:      req.DoctorID,
+		UnitID:        req.UnitID,
+		TreatmentType: req.TreatmentType,
+		Status:        entities.AppointmentStatusScheduled,
+		StartTime:     req.StartTime,
+		EndTime:       req.EndTime,
+		Notes:         req.Notes,
+		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
+	}
+}
+
+// ToAppointmentResponse converts entities.Appointment to AppointmentResponse
+func ToAppointmentResponse(a *entities.Appointment) *AppointmentResponse {
+	return &AppointmentResponse{
+		ID:            a.ID,
+		PatientID:     a.PatientID,
+		DoctorID:      a.DoctorID,
+		UnitID:        a.UnitID,
+		TreatmentType: a.TreatmentType,
+		Status:        a.Status,
+		StartTime:     a.StartTime,
+		EndTime:       a.EndTime,
+		Notes:         a.Notes,
+		CreatedAt:     a.CreatedAt,
+		UpdatedAt:     a.UpdatedAt,
+	}
+}
+
+// ToEntityUpdate converts UpdateAppointmentRequest to updated entities.Appointment
+func (req *UpdateAppointmentRequest) ToEntityUpdate(existing *entities.Appointment) *entities.Appointment {
+	existing.PatientID = req.PatientID
+	existing.DoctorID = req.DoctorID
+	existing.UnitID = req.UnitID
+	existing.TreatmentType = req.TreatmentType
+	if req.Status != nil {
+		existing.Status = *req.Status
+	}
+	existing.StartTime = req.StartTime
+	existing.EndTime = req.EndTime
+	existing.Notes = req.Notes
+	existing.UpdatedAt = time.Now()
+	return existing
+}
