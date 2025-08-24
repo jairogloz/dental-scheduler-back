@@ -9,6 +9,7 @@ import (
 // Patient represents a patient entity
 type Patient struct {
 	ID             uuid.UUID  `json:"id" db:"id"`
+	UserID         *uuid.UUID `json:"user_id,omitempty" db:"user_id"` // Links to auth.users(id)
 	Name           string     `json:"name" db:"name"`
 	Email          *string    `json:"email,omitempty" db:"email"`
 	Phone          *string    `json:"phone,omitempty" db:"phone"`
@@ -36,4 +37,21 @@ func (p *Patient) Validate() error {
 // IsValid checks if the patient has valid data
 func (p *Patient) IsValid() bool {
 	return p.Validate() == nil
+}
+
+// LinkToUser links the patient to an authenticated user
+func (p *Patient) LinkToUser(userID uuid.UUID) {
+	p.UserID = &userID
+	p.UpdatedAt = time.Now()
+}
+
+// UnlinkFromUser removes the user link from the patient
+func (p *Patient) UnlinkFromUser() {
+	p.UserID = nil
+	p.UpdatedAt = time.Now()
+}
+
+// HasUserAccount checks if the patient has a linked user account
+func (p *Patient) HasUserAccount() bool {
+	return p.UserID != nil
 }

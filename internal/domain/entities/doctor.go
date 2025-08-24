@@ -11,6 +11,7 @@ import (
 type Doctor struct {
 	ID             uuid.UUID  `json:"id" db:"id"`
 	OrganizationID uuid.UUID  `json:"organization_id" db:"organization_id"`
+	UserID         *uuid.UUID `json:"user_id,omitempty" db:"user_id"` // Links to auth.users(id)
 	Name           string     `json:"name" db:"name"`
 	Specialty      *string    `json:"specialty,omitempty" db:"specialty"`
 	Email          *string    `json:"email,omitempty" db:"email"`
@@ -68,6 +69,23 @@ func NewDoctor(name string, organizationID uuid.UUID) *Doctor {
 		CreatedAt:      now,
 		UpdatedAt:      now,
 	}
+}
+
+// LinkToUser links the doctor to an authenticated user
+func (d *Doctor) LinkToUser(userID uuid.UUID) {
+	d.UserID = &userID
+	d.UpdatedAt = time.Now()
+}
+
+// UnlinkFromUser removes the user link from the doctor
+func (d *Doctor) UnlinkFromUser() {
+	d.UserID = nil
+	d.UpdatedAt = time.Now()
+}
+
+// HasUserAccount checks if the doctor has a linked user account
+func (d *Doctor) HasUserAccount() bool {
+	return d.UserID != nil
 }
 
 // IsValid checks if the doctor has valid data

@@ -9,6 +9,11 @@ var (
 	ErrOrganizationNotFound    = errors.New("organization not found")
 	ErrInvalidOrganizationID   = errors.New("organization ID is required")
 
+	// Profile errors
+	ErrInvalidProfileID = errors.New("profile ID is required")
+	ErrInvalidRoles     = errors.New("at least one role is required")
+	ErrProfileNotFound  = errors.New("profile not found")
+
 	// Clinic errors
 	ErrInvalidClinicName = errors.New("clinic name is required")
 	ErrClinicNotFound    = errors.New("clinic not found")
