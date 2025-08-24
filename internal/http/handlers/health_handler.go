@@ -34,18 +34,3 @@ func (h *HealthHandler) Check(c *gin.Context) {
 		"data":    healthResponse,
 	})
 }
-
-// Readiness handles readiness check requests
-func (h *HealthHandler) Readiness(c *gin.Context) {
-	// In a real application, you would check database connectivity, etc.
-	c.JSON(http.StatusOK, gin.H{
-		"status": "ready",
-	})
-}
-
-// Liveness handles liveness check requests
-func (h *HealthHandler) Liveness(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"status": "alive",
-	})
-}

@@ -18,8 +18,6 @@ func SetupRoutes(
 ) {
 	// Health check routes
 	router.GET("/health", healthHandler.Check)
-	router.GET("/readiness", healthHandler.Readiness)
-	router.GET("/liveness", healthHandler.Liveness)
 
 	// API v1 routes
 	v1 := router.Group("/api/v1")
