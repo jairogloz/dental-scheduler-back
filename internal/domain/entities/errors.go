@@ -4,6 +4,11 @@ import "errors"
 
 // Domain errors
 var (
+	// Organization errors
+	ErrInvalidOrganizationName = errors.New("organization name is required")
+	ErrOrganizationNotFound    = errors.New("organization not found")
+	ErrInvalidOrganizationID   = errors.New("organization ID is required")
+
 	// Clinic errors
 	ErrInvalidClinicName = errors.New("clinic name is required")
 	ErrClinicNotFound    = errors.New("clinic not found")
@@ -14,9 +19,10 @@ var (
 	ErrUnitNotFound    = errors.New("unit not found")
 
 	// Doctor errors
-	ErrInvalidDoctorName = errors.New("doctor name is required")
-	ErrDoctorNotFound    = errors.New("doctor not found")
-	ErrInvalidEmail      = errors.New("invalid email format")
+	ErrInvalidDoctorName              = errors.New("doctor name is required")
+	ErrDoctorNotFound                 = errors.New("doctor not found")
+	ErrInvalidEmail                   = errors.New("invalid email format")
+	ErrDoctorUnitOrganizationMismatch = errors.New("doctor's default unit must belong to the same organization")
 
 	// Patient errors
 	ErrInvalidPatientName = errors.New("patient name is required")

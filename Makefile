@@ -27,11 +27,11 @@ deps:
 	go mod tidy
 
 # Database configuration (can be overridden with environment variables)
-DB_HOST ?= localhost
+DB_HOST ?= aws-1-us-east-2.pooler.supabase.com
 DB_PORT ?= 5432
-DB_USER ?= postgres
-DB_PASSWORD ?= secure_dev_password
-DB_NAME ?= dental_scheduler
+DB_USER ?= postgres.wxwpuooiyeblrqntyewq
+DB_PASSWORD ?= 5a9MBf1AJlWpHHIN
+DB_NAME ?= postgres
 DB_SSL_MODE ?= disable
 
 # Construct database URL
