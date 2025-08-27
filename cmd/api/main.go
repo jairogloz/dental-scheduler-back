@@ -111,6 +111,7 @@ func main() {
 		doctorHandler,
 		patientHandler,
 		appointmentHandler,
+		appLogger,
 	)
 
 	// Create HTTP server

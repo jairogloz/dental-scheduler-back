@@ -118,7 +118,7 @@ func (req *GetDoctorsByOrgRequest) ParsedClinicID() (*uuid.UUID, error) {
 	if req.ClinicID == nil || *req.ClinicID == "" {
 		return nil, nil
 	}
-	
+
 	clinicUUID, err := uuid.Parse(*req.ClinicID)
 	if err != nil {
 		return nil, err
