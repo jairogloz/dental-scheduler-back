@@ -69,7 +69,7 @@ type RescheduleAppointmentRequest struct {
 
 // GetAppointmentsRequest represents the request to get appointments with filters
 type GetAppointmentsRequest struct {
-	OrgID     string `form:"orgId" binding:"required,uuid"`
+	OrgID     string `form:"-"` // This will be set from context, not from form parameters
 	StartDate string `form:"startDate" binding:"required"`
 	EndDate   string `form:"endDate" binding:"required"`
 	ClinicID  string `form:"clinicId,omitempty"`
