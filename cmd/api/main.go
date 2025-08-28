@@ -55,6 +55,7 @@ func main() {
 	patientRepo := postgresRepos.NewPatientPostgresRepository(dbConn.GetDB())
 	appointmentRepo := postgresRepos.NewAppointmentPostgresRepository(dbConn.GetDB())
 	availabilityRepo := postgresRepos.NewDoctorAvailabilityPostgresRepository(dbConn.GetDB())
+	userRepo := postgresRepos.NewUserPostgresRepository(dbConn.GetDB())
 
 	// Initialize domain services
 	conflictChecker := services.NewAppointmentConflictChecker(appointmentRepo, availabilityRepo)
@@ -71,6 +72,7 @@ func main() {
 	unitUseCase := usecases.NewUnitUseCase(unitRepo, clinicRepo)
 	doctorUseCase := usecases.NewDoctorUseCase(doctorRepo, unitRepo, appointmentRepo)
 	patientUseCase := usecases.NewPatientUseCase(patientRepo)
+	// userUseCase := usecases.NewUserUseCase(userRepo, appLogger) // Available when needed
 	appointmentUseCase := usecases.NewAppointmentUseCase(
 		appointmentRepo,
 		patientRepo,
@@ -111,6 +113,7 @@ func main() {
 		doctorHandler,
 		patientHandler,
 		appointmentHandler,
+		userRepo,
 		appLogger,
 	)
 

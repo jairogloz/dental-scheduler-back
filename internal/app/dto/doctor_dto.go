@@ -104,13 +104,7 @@ type DoctorWithOrgInfoResponse struct {
 
 // GetDoctorsByOrgRequest represents the query parameters for getting doctors by organization
 type GetDoctorsByOrgRequest struct {
-	OrgID    string  `form:"orgId" binding:"required"`
 	ClinicID *string `form:"clinicId"`
-}
-
-// ParsedOrgID returns the parsed UUID for OrgID
-func (req *GetDoctorsByOrgRequest) ParsedOrgID() (uuid.UUID, error) {
-	return uuid.Parse(req.OrgID)
 }
 
 // ParsedClinicID returns the parsed UUID for ClinicID if provided

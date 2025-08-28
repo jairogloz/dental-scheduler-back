@@ -52,8 +52,8 @@ db-config:
 migrate-up:
 	migrate -path internal/infra/database/postgres/migrations -database "$(DB_URL)" -verbose up
 
-migrate-down:
-	migrate -path internal/infra/database/postgres/migrations -database "$(DB_URL)" -verbose down
+migrate-down-one:
+	migrate -path internal/infra/database/postgres/migrations -database "$(DB_URL)" -verbose down 1
 
 migrate-status:
 	migrate -path internal/infra/database/postgres/migrations -database "$(DB_URL)" version
@@ -98,3 +98,4 @@ mocks:
 	mockgen -source=internal/domain/ports/repositories/doctor_repository.go -destination=internal/domain/ports/repositories/mocks/doctor_repository_mock.go
 	mockgen -source=internal/domain/ports/repositories/patient_repository.go -destination=internal/domain/ports/repositories/mocks/patient_repository_mock.go
 	mockgen -source=internal/domain/ports/repositories/unit_repository.go -destination=internal/domain/ports/repositories/mocks/unit_repository_mock.go
+	mockgen -source=internal/domain/ports/repositories/user_repository.go -destination=internal/domain/ports/repositories/mocks/user_repository_mock.go

@@ -1,12 +1,15 @@
 package middleware
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
+	"dental-scheduler-backend/internal/domain/entities"
+	"dental-scheduler-backend/internal/domain/ports/repositories"
 	"dental-scheduler-backend/internal/infra/logger"
 
 	"github.com/gin-gonic/gin"
@@ -111,20 +114,21 @@ func generateRequestID() string {
 
 // SupabaseUser represents the user information from Supabase JWT
 type SupabaseUser struct {
-	ID    string `json:"sub"`
-	Email string `json:"email"`
-	Role  string `json:"role"`
+	ID    string   `json:"sub"`
+	Email string   `json:"email"`
+	Roles []string `json:"roles,omitempty"`
 }
 
 // SupabaseClaims represents the JWT claims structure from Supabase
 type SupabaseClaims struct {
 	jwt.RegisteredClaims
-	Email string `json:"email"`
-	Role  string `json:"role"`
+	Email string   `json:"email"`
+	Roles []string `json:"roles,omitempty"`
 }
 
 // SupabaseAuth creates a middleware that validates Supabase JWT tokens
-func SupabaseAuth(logger *logger.Logger) gin.HandlerFunc {
+// and enriches the context with full user profile from database
+func SupabaseAuth(logger *logger.Logger, userRepo repositories.UserRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Get token from Authorization header
 		authHeader := c.GetHeader("Authorization")
@@ -157,7 +161,7 @@ func SupabaseAuth(logger *logger.Logger) gin.HandlerFunc {
 		}
 
 		// Validate and parse the JWT token
-		user, err := validateSupabaseToken(tokenString, logger)
+		jwtUser, err := validateSupabaseToken(tokenString, logger)
 		if err != nil {
 			logger.Logger.WithError(err).Debug("Token validation failed")
 			c.JSON(http.StatusUnauthorized, gin.H{
@@ -171,14 +175,39 @@ func SupabaseAuth(logger *logger.Logger) gin.HandlerFunc {
 			return
 		}
 
-		// Set user information in context
-		c.Set("user", user)
-		c.Set("user_id", user.ID)
-		c.Set("user_email", user.Email)
-		c.Set("user_role", user.Role)
+		// Fetch full user profile from database if repository is provided
+		if userRepo != nil {
+			ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+			defer cancel()
+
+			userProfile, err := userRepo.GetProfileBySupabaseID(ctx, jwtUser.ID)
+			if err != nil {
+				logger.Logger.WithError(err).Warn("Failed to fetch user profile from database, using JWT data only")
+				// Continue with JWT data only, don't abort
+			} else {
+				// Use database data and set additional context
+				c.Set("user_profile", userProfile)
+				c.Set("organization", userProfile.Organization)
+				if userProfile.Profile.OrganizationID != nil {
+					c.Set("organization_id", userProfile.Profile.OrganizationID.String())
+				}
+			}
+		}
+
+		// Set basic user information in context (from JWT)
+		c.Set("user", jwtUser)
+		c.Set("user_id", jwtUser.ID)
+		c.Set("user_email", jwtUser.Email)
+		c.Set("user_roles", jwtUser.Roles)
 
 		c.Next()
 	}
+}
+
+// SupabaseAuthSimple creates a basic middleware that only validates JWT tokens
+// without database lookup for organization data
+func SupabaseAuthSimple(logger *logger.Logger) gin.HandlerFunc {
+	return SupabaseAuth(logger, nil)
 }
 
 // validateSupabaseToken validates a Supabase JWT token
@@ -247,19 +276,19 @@ func validateSupabaseToken(tokenString string, logger *logger.Logger) (*Supabase
 	user := &SupabaseUser{
 		ID:    claims.Subject,
 		Email: claims.Email,
-		Role:  claims.Role,
+		Roles: claims.Roles,
 	}
 
-	// Set default role if not present
-	if user.Role == "" {
-		user.Role = "authenticated"
-		logger.Logger.Debug("No role claim found, using default 'authenticated'")
+	// Set default roles if not present
+	if len(user.Roles) == 0 {
+		user.Roles = []string{"authenticated"}
+		logger.Logger.Debug("No roles claim found, using default 'authenticated'")
 	}
 
 	logger.Logger.WithFields(map[string]interface{}{
 		"user_id": user.ID,
 		"email":   user.Email,
-		"role":    user.Role,
+		"roles":   user.Roles,
 	}).Info("Successfully validated JWT token")
 
 	return user, nil
@@ -306,7 +335,7 @@ func OptionalAuth(logger *logger.Logger) gin.HandlerFunc {
 		c.Set("user", user)
 		c.Set("user_id", user.ID)
 		c.Set("user_email", user.Email)
-		c.Set("user_role", user.Role)
+		c.Set("user_roles", user.Roles)
 
 		c.Next()
 	}
@@ -316,9 +345,9 @@ func OptionalAuth(logger *logger.Logger) gin.HandlerFunc {
 // This should be used after SupabaseAuth middleware
 func RequireRole(role string, logger *logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		userRole, exists := c.Get("user_role")
+		userRoles, exists := c.Get("user_roles")
 		if !exists {
-			logger.Logger.Debug("No user role found in context")
+			logger.Logger.Debug("No user roles found in context")
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"success": false,
 				"error": gin.H{
@@ -330,10 +359,33 @@ func RequireRole(role string, logger *logger.Logger) gin.HandlerFunc {
 			return
 		}
 
-		if userRole != role {
+		roles, ok := userRoles.([]string)
+		if !ok {
+			logger.Logger.Debug("Invalid roles format in context")
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"success": false,
+				"error": gin.H{
+					"code":    "UNAUTHORIZED",
+					"message": "Authentication required",
+				},
+			})
+			c.Abort()
+			return
+		}
+
+		// Check if user has the required role
+		hasRole := false
+		for _, userRole := range roles {
+			if userRole == role {
+				hasRole = true
+				break
+			}
+		}
+
+		if !hasRole {
 			logger.Logger.WithFields(map[string]interface{}{
 				"required_role": role,
-				"user_role":     userRole,
+				"user_roles":    roles,
 			}).Debug("Insufficient permissions")
 			c.JSON(http.StatusForbidden, gin.H{
 				"success": false,
@@ -368,4 +420,59 @@ func GetUserIDFromContext(c *gin.Context) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// GetUserRolesFromContext retrieves the authenticated user roles from the Gin context
+func GetUserRolesFromContext(c *gin.Context) ([]string, bool) {
+	if userRoles, exists := c.Get("user_roles"); exists {
+		if roles, ok := userRoles.([]string); ok {
+			return roles, true
+		}
+	}
+	return nil, false
+}
+
+// HasRole checks if the user has a specific role
+func HasRole(c *gin.Context, role string) bool {
+	roles, exists := GetUserRolesFromContext(c)
+	if !exists {
+		return false
+	}
+
+	for _, userRole := range roles {
+		if userRole == role {
+			return true
+		}
+	}
+	return false
+}
+
+// GetOrganizationIDFromContext retrieves the organization ID from the Gin context
+func GetOrganizationIDFromContext(c *gin.Context) (string, bool) {
+	if orgID, exists := c.Get("organization_id"); exists {
+		if id, ok := orgID.(string); ok && id != "" {
+			return id, true
+		}
+	}
+	return "", false
+}
+
+// GetUserProfileFromContext retrieves the full user profile from the Gin context
+func GetUserProfileFromContext(c *gin.Context) (*entities.UserProfile, bool) {
+	if profile, exists := c.Get("user_profile"); exists {
+		if userProfile, ok := profile.(*entities.UserProfile); ok {
+			return userProfile, true
+		}
+	}
+	return nil, false
+}
+
+// GetOrganizationFromContext retrieves the organization from the Gin context
+func GetOrganizationFromContext(c *gin.Context) (*entities.Organization, bool) {
+	if org, exists := c.Get("organization"); exists {
+		if organization, ok := org.(*entities.Organization); ok {
+			return organization, true
+		}
+	}
+	return nil, false
 }

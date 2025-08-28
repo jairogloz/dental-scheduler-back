@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"dental-scheduler-backend/internal/domain/ports/repositories"
 	"dental-scheduler-backend/internal/http/handlers"
 	"dental-scheduler-backend/internal/http/middleware"
 	"dental-scheduler-backend/internal/infra/logger"
@@ -17,6 +18,7 @@ func SetupRoutes(
 	doctorHandler *handlers.DoctorHandler,
 	patientHandler *handlers.PatientHandler,
 	appointmentHandler *handlers.AppointmentHandler,
+	userRepo repositories.UserRepository,
 	logger *logger.Logger,
 ) {
 	// Health check routes (public)
@@ -27,7 +29,7 @@ func SetupRoutes(
 	{
 		// Protected routes (authentication required)
 		protected := v1.Group("/")
-		protected.Use(middleware.SupabaseAuth(logger))
+		protected.Use(middleware.SupabaseAuth(logger, userRepo))
 		{
 			// Clinic routes
 			clinics := protected.Group("/clinics")

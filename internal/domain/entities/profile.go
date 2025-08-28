@@ -111,3 +111,9 @@ func (p *Profile) UpdateProfile(fullName, avatarURL *string) {
 	}
 	p.UpdatedAt = time.Now()
 }
+
+// UserProfile represents user profile information with organization details
+type UserProfile struct {
+	Profile      *Profile      `json:"profile"`
+	Organization *Organization `json:"organization"`
+}
