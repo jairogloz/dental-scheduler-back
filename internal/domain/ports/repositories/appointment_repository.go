@@ -9,6 +9,24 @@ import (
 	"github.com/google/uuid"
 )
 
+// AppointmentFilters represents filters for appointment queries
+type AppointmentFilters struct {
+	ClinicID *uuid.UUID
+	DoctorID *uuid.UUID
+	Status   *entities.AppointmentStatus
+	Page     int
+	Limit    int
+}
+
+// AppointmentWithDetails represents an appointment with all related entity details
+type AppointmentWithDetails struct {
+	Appointment *entities.Appointment
+	Patient     *entities.Patient
+	Doctor      *entities.Doctor
+	Unit        *entities.Unit
+	Clinic      *entities.Clinic
+}
+
 // AppointmentRepository defines the interface for appointment data operations
 type AppointmentRepository interface {
 	// Create creates a new appointment
@@ -46,4 +64,7 @@ type AppointmentRepository interface {
 
 	// GetConflictingAppointments returns appointments that conflict with the given time range
 	GetConflictingAppointments(ctx context.Context, doctorID, unitID uuid.UUID, startTime, endTime time.Time, excludeAppointmentID *uuid.UUID) ([]*entities.Appointment, error)
+
+	// GetByOrganizationAndDateRange retrieves appointments for an organization within a date range with filters
+	GetByOrganizationAndDateRange(ctx context.Context, orgID uuid.UUID, startDate, endDate time.Time, filters AppointmentFilters) ([]*AppointmentWithDetails, int, error)
 }

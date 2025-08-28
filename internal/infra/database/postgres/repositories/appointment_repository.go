@@ -331,3 +331,161 @@ func (r *AppointmentPostgresRepository) scanAppointments(rows *sql.Rows) ([]*ent
 
 	return appointments, nil
 }
+
+// GetByOrganizationAndDateRange retrieves appointments for an organization within a date range with filters
+func (r *AppointmentPostgresRepository) GetByOrganizationAndDateRange(ctx context.Context, orgID uuid.UUID, startDate, endDate time.Time, filters repositories.AppointmentFilters) ([]*repositories.AppointmentWithDetails, int, error) {
+	// Build the base query with joins
+	baseQuery := `
+		FROM appointments a
+		INNER JOIN units u ON a.unit_id = u.id
+		INNER JOIN clinics c ON u.clinic_id = c.id
+		INNER JOIN doctors d ON a.doctor_id = d.id
+		INNER JOIN patients p ON a.patient_id = p.id
+		WHERE c.organization_id = $1 
+		AND a.start_time >= $2 
+		AND a.start_time < $3`
+
+	// Build WHERE conditions and parameters
+	params := []interface{}{orgID, startDate, endDate.AddDate(0, 0, 1)} // Add 1 day to include the end date
+	paramIndex := 4
+
+	whereConditions := ""
+
+	if filters.ClinicID != nil {
+		whereConditions += fmt.Sprintf(" AND c.id = $%d", paramIndex)
+		params = append(params, *filters.ClinicID)
+		paramIndex++
+	}
+
+	if filters.DoctorID != nil {
+		whereConditions += fmt.Sprintf(" AND d.id = $%d", paramIndex)
+		params = append(params, *filters.DoctorID)
+		paramIndex++
+	}
+
+	if filters.Status != nil {
+		whereConditions += fmt.Sprintf(" AND a.status = $%d", paramIndex)
+		params = append(params, string(*filters.Status))
+		paramIndex++
+	}
+
+	// Count query
+	countQuery := "SELECT COUNT(*) " + baseQuery + whereConditions
+
+	var totalCount int
+	err := r.db.QueryRowContext(ctx, countQuery, params...).Scan(&totalCount)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count appointments: %w", err)
+	}
+
+	// Main query with all fields
+	selectFields := `
+		SELECT 
+			a.id, a.patient_id, a.doctor_id, a.unit_id, a.treatment_type, a.status, 
+			a.start_time, a.end_time, a.notes, a.created_at, a.updated_at,
+			p.id, p.name, p.phone, p.email, p.created_at, p.updated_at,
+			d.id, d.organization_id, d.user_id, d.name, d.specialty, d.email, d.phone, d.is_active, d.created_at, d.updated_at,
+			u.id, u.name, u.description, u.clinic_id, u.created_at, u.updated_at,
+			c.id, c.name, c.address, c.phone, c.email, c.organization_id, c.created_at, c.updated_at`
+
+	orderBy := " ORDER BY a.start_time ASC"
+
+	// Add pagination
+	if filters.Limit > 0 {
+		offset := 0
+		if filters.Page > 1 {
+			offset = (filters.Page - 1) * filters.Limit
+		}
+		orderBy += fmt.Sprintf(" LIMIT %d OFFSET %d", filters.Limit, offset)
+	}
+
+	fullQuery := selectFields + " " + baseQuery + whereConditions + orderBy
+
+	rows, err := r.db.QueryContext(ctx, fullQuery, params...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to query appointments: %w", err)
+	}
+	defer rows.Close()
+
+	var appointments []*repositories.AppointmentWithDetails
+
+	for rows.Next() {
+		var appointment entities.Appointment
+		var patient entities.Patient
+		var doctor entities.Doctor
+		var unit entities.Unit
+		var clinic entities.Clinic
+		var status string
+
+		err := rows.Scan(
+			// Appointment fields
+			&appointment.ID,
+			&appointment.PatientID,
+			&appointment.DoctorID,
+			&appointment.UnitID,
+			&appointment.TreatmentType,
+			&status,
+			&appointment.StartTime,
+			&appointment.EndTime,
+			&appointment.Notes,
+			&appointment.CreatedAt,
+			&appointment.UpdatedAt,
+			// Patient fields
+			&patient.ID,
+			&patient.Name,
+			&patient.Phone,
+			&patient.Email,
+			&patient.CreatedAt,
+			&patient.UpdatedAt,
+			// Doctor fields
+			&doctor.ID,
+			&doctor.OrganizationID,
+			&doctor.UserID,
+			&doctor.Name,
+			&doctor.Specialty,
+			&doctor.Email,
+			&doctor.Phone,
+			&doctor.IsActive,
+			&doctor.CreatedAt,
+			&doctor.UpdatedAt,
+			// Unit fields
+			&unit.ID,
+			&unit.Name,
+			&unit.Description,
+			&unit.ClinicID,
+			&unit.CreatedAt,
+			&unit.UpdatedAt,
+			// Clinic fields
+			&clinic.ID,
+			&clinic.Name,
+			&clinic.Address,
+			&clinic.Phone,
+			&clinic.Email,
+			&clinic.OrganizationID,
+			&clinic.CreatedAt,
+			&clinic.UpdatedAt,
+		)
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to scan appointment with details: %w", err)
+		}
+
+		// Set appointment status
+		appointment.Status = entities.AppointmentStatus(status)
+
+		appointmentWithDetails := &repositories.AppointmentWithDetails{
+			Appointment: &appointment,
+			Patient:     &patient,
+			Doctor:      &doctor,
+			Unit:        &unit,
+			Clinic:      &clinic,
+		}
+
+		appointments = append(appointments, appointmentWithDetails)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("error iterating over appointment rows: %w", err)
+	}
+
+	return appointments, totalCount, nil
+}

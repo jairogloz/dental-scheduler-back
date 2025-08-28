@@ -76,7 +76,7 @@ func SetupRoutes(
 			appointments := protected.Group("/appointments")
 			{
 				appointments.POST("", appointmentHandler.CreateAppointment) // This needs to be implemented for conflict detection
-				appointments.GET("", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
+				appointments.GET("", appointmentHandler.GetAppointments)    // Get appointments by organization with filters
 				appointments.GET("/upcoming", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
 				appointments.GET("/:id", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
 				appointments.PUT("/:id", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })

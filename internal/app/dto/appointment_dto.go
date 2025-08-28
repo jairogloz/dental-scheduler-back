@@ -67,6 +67,68 @@ type RescheduleAppointmentRequest struct {
 	EndTime   time.Time `json:"end_time" binding:"required"`
 }
 
+// GetAppointmentsRequest represents the request to get appointments with filters
+type GetAppointmentsRequest struct {
+	OrgID     string `form:"orgId" binding:"required,uuid"`
+	StartDate string `form:"startDate" binding:"required"`
+	EndDate   string `form:"endDate" binding:"required"`
+	ClinicID  string `form:"clinicId,omitempty"`
+	Status    string `form:"status,omitempty"`
+	DoctorID  string `form:"doctorId,omitempty"`
+	Page      int    `form:"page,omitempty"`
+	Limit     int    `form:"limit,omitempty"`
+}
+
+// AppointmentListResponse represents an appointment with all related details for listing
+type AppointmentListResponse struct {
+	ID            string    `json:"id"`
+	PatientID     string    `json:"patient_id"`
+	PatientName   string    `json:"patient_name"`
+	PatientPhone  string    `json:"patient_phone,omitempty"`
+	DoctorID      string    `json:"doctor_id"`
+	DoctorName    string    `json:"doctor_name"`
+	ClinicID      string    `json:"clinic_id"`
+	ClinicName    string    `json:"clinic_name"`
+	UnitID        *string   `json:"unit_id,omitempty"`
+	UnitName      *string   `json:"unit_name,omitempty"`
+	StartTime     time.Time `json:"start_time"`
+	EndTime       time.Time `json:"end_time"`
+	Status        string    `json:"status"`
+	TreatmentType string    `json:"treatment_type,omitempty"`
+	Notes         string    `json:"notes,omitempty"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+// AppointmentSummary provides summary statistics for the appointments
+type AppointmentSummary struct {
+	TotalAppointments int                    `json:"total_appointments"`
+	ByClinic          map[string]ClinicStats `json:"by_clinic"`
+	ByStatus          map[string]int         `json:"by_status"`
+	ByDate            map[string]int         `json:"by_date"`
+}
+
+// ClinicStats provides statistics per clinic
+type ClinicStats struct {
+	Count int    `json:"count"`
+	Name  string `json:"name"`
+}
+
+// GetAppointmentsResponse represents the complete response for appointment listing
+type GetAppointmentsResponse struct {
+	Appointments []AppointmentListResponse `json:"appointments"`
+	Summary      AppointmentSummary        `json:"summary"`
+	Pagination   PaginationInfo            `json:"pagination"`
+}
+
+// PaginationInfo provides pagination details
+type PaginationInfo struct {
+	Page       int `json:"page"`
+	Limit      int `json:"limit"`
+	Total      int `json:"total"`
+	TotalPages int `json:"total_pages"`
+}
+
 // ToEntity converts CreateAppointmentRequest to entities.Appointment
 func (req *CreateAppointmentRequest) ToEntity() *entities.Appointment {
 	return &entities.Appointment{

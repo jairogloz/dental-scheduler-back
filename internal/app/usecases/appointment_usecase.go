@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"dental-scheduler-backend/internal/app/dto"
@@ -38,8 +39,15 @@ func NewAppointmentUseCase(
 	}
 }
 
-// CreateAppointment creates a new appointment with conflict checking
+// CreateAppointment creates a new appointment with basic validation (no conflict checking)
 func (uc *AppointmentUseCase) CreateAppointment(ctx context.Context, req *dto.CreateAppointmentRequest) (*dto.AppointmentResponse, error) {
+	// Validate date logic: end date can't be before start date
+	if req.EndTime.Before(req.StartTime) {
+		return nil, fmt.Errorf("end time cannot be before start time")
+	}
+
+	// Allow appointments in the past (no validation against past dates)
+
 	// Verify patient exists
 	patientExists, err := uc.patientRepo.Exists(ctx, req.PatientID)
 	if err != nil {
@@ -49,11 +57,30 @@ func (uc *AppointmentUseCase) CreateAppointment(ctx context.Context, req *dto.Cr
 		return nil, entities.ErrPatientNotFound
 	}
 
+	// Verify doctor exists
+	doctorExists, err := uc.doctorRepo.Exists(ctx, req.DoctorID)
+	if err != nil {
+		return nil, err
+	}
+	if !doctorExists {
+		return nil, entities.ErrDoctorNotFound
+	}
+
+	// Verify unit exists
+	unitExists, err := uc.unitRepo.Exists(ctx, req.UnitID)
+	if err != nil {
+		return nil, err
+	}
+	if !unitExists {
+		return nil, entities.ErrUnitNotFound
+	}
+
+	// Create appointment entity
 	appointment := req.ToEntity()
 
-	// Use scheduling service to create appointment with conflict checking
-	if err := uc.schedulingService.ScheduleAppointment(ctx, appointment); err != nil {
-		return nil, err
+	// Create appointment directly in repository (no conflict checking)
+	if err := uc.appointmentRepo.Create(ctx, appointment); err != nil {
+		return nil, fmt.Errorf("failed to create appointment: %w", err)
 	}
 
 	return dto.ToAppointmentResponse(appointment), nil
@@ -251,4 +278,160 @@ func (uc *AppointmentUseCase) GetAvailableSlots(ctx context.Context, doctorID uu
 	}
 
 	return responses, nil
+}
+
+// GetAppointmentsByOrganization retrieves appointments for an organization with filters
+func (uc *AppointmentUseCase) GetAppointmentsByOrganization(ctx context.Context, req *dto.GetAppointmentsRequest) (*dto.GetAppointmentsResponse, error) {
+	// Parse and validate dates
+	startDate, err := time.Parse("2006-01-02", req.StartDate)
+	if err != nil {
+		return nil, fmt.Errorf("invalid start date format: %w", err)
+	}
+
+	endDate, err := time.Parse("2006-01-02", req.EndDate)
+	if err != nil {
+		return nil, fmt.Errorf("invalid end date format: %w", err)
+	}
+
+	// Validate date range (max 30 days)
+	if endDate.Sub(startDate) > 30*24*time.Hour {
+		return nil, fmt.Errorf("date range cannot exceed 30 days")
+	}
+
+	// Set default pagination
+	if req.Limit <= 0 {
+		req.Limit = 50 // Default limit
+	}
+	if req.Page <= 0 {
+		req.Page = 1 // Default page
+	}
+
+	// Build filters
+	filters := repositories.AppointmentFilters{
+		Page:  req.Page,
+		Limit: req.Limit,
+	}
+
+	if req.ClinicID != "" {
+		clinicUUID, err := uuid.Parse(req.ClinicID)
+		if err != nil {
+			return nil, fmt.Errorf("invalid clinic ID: %w", err)
+		}
+		filters.ClinicID = &clinicUUID
+	}
+
+	if req.DoctorID != "" {
+		doctorUUID, err := uuid.Parse(req.DoctorID)
+		if err != nil {
+			return nil, fmt.Errorf("invalid doctor ID: %w", err)
+		}
+		filters.DoctorID = &doctorUUID
+	}
+
+	if req.Status != "" {
+		status := entities.AppointmentStatus(req.Status)
+		filters.Status = &status
+	}
+
+	// Get organization UUID
+	orgUUID, err := uuid.Parse(req.OrgID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid organization ID: %w", err)
+	}
+
+	// Get appointments with details
+	appointments, totalCount, err := uc.appointmentRepo.GetByOrganizationAndDateRange(ctx, orgUUID, startDate, endDate, filters)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch appointments: %w", err)
+	}
+
+	// Convert to DTOs and build response
+	return uc.buildAppointmentResponse(appointments, totalCount, req.Page, req.Limit), nil
+}
+
+// buildAppointmentResponse converts appointments to DTOs and builds summary
+func (uc *AppointmentUseCase) buildAppointmentResponse(appointments []*repositories.AppointmentWithDetails, totalCount, page, limit int) *dto.GetAppointmentsResponse {
+	// Convert appointments to DTOs
+	appointmentDTOs := make([]dto.AppointmentListResponse, len(appointments))
+	clinicMap := make(map[string]dto.ClinicStats)
+	statusMap := make(map[string]int)
+	dateMap := make(map[string]int)
+
+	for i, appt := range appointments {
+		// Build appointment DTO
+		appointmentDTOs[i] = dto.AppointmentListResponse{
+			ID:            appt.Appointment.ID.String(),
+			PatientID:     appt.Appointment.PatientID.String(),
+			PatientName:   appt.Patient.Name,
+			PatientPhone:  getStringPtr(appt.Patient.Phone),
+			DoctorID:      appt.Appointment.DoctorID.String(),
+			DoctorName:    appt.Doctor.Name,
+			ClinicID:      appt.Clinic.ID.String(),
+			ClinicName:    appt.Clinic.Name,
+			UnitID:        getStringPtrFromUUID(&appt.Unit.ID),
+			UnitName:      &appt.Unit.Name,
+			StartTime:     appt.Appointment.StartTime,
+			EndTime:       appt.Appointment.EndTime,
+			Status:        string(appt.Appointment.Status),
+			TreatmentType: getStringPtr(appt.Appointment.TreatmentType),
+			Notes:         getStringPtr(appt.Appointment.Notes),
+			CreatedAt:     appt.Appointment.CreatedAt,
+			UpdatedAt:     appt.Appointment.UpdatedAt,
+		}
+
+		// Build summary data
+		clinicID := appt.Clinic.ID.String()
+		if stats, exists := clinicMap[clinicID]; exists {
+			stats.Count++
+			clinicMap[clinicID] = stats
+		} else {
+			clinicMap[clinicID] = dto.ClinicStats{
+				Count: 1,
+				Name:  appt.Clinic.Name,
+			}
+		}
+
+		// Status summary
+		status := string(appt.Appointment.Status)
+		statusMap[status]++
+
+		// Date summary
+		dateKey := appt.Appointment.StartTime.Format("2006-01-02")
+		dateMap[dateKey]++
+	}
+
+	// Calculate pagination
+	totalPages := (totalCount + limit - 1) / limit
+
+	return &dto.GetAppointmentsResponse{
+		Appointments: appointmentDTOs,
+		Summary: dto.AppointmentSummary{
+			TotalAppointments: totalCount,
+			ByClinic:          clinicMap,
+			ByStatus:          statusMap,
+			ByDate:            dateMap,
+		},
+		Pagination: dto.PaginationInfo{
+			Page:       page,
+			Limit:      limit,
+			Total:      totalCount,
+			TotalPages: totalPages,
+		},
+	}
+}
+
+// Helper functions
+func getStringPtr(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+func getStringPtrFromUUID(u *uuid.UUID) *string {
+	if u == nil {
+		return nil
+	}
+	str := u.String()
+	return &str
 }
