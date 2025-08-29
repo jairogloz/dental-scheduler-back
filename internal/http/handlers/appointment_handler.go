@@ -131,6 +131,33 @@ func (h *AppointmentHandler) GetAppointments(c *gin.Context) {
 // @Failure 500 {object} ErrorResponse "Internal server error"
 // @Router /appointments [post]
 func (h *AppointmentHandler) CreateAppointment(c *gin.Context) {
+	// Get organization ID from context (set by auth middleware)
+	orgID, exists := c.Get("organization_id")
+	if !exists {
+		h.logger.Logger.Error("Organization ID not found in context")
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "UNAUTHORIZED",
+				"message": "Organization context required",
+			},
+		})
+		return
+	}
+
+	orgUUID, ok := orgID.(uuid.UUID)
+	if !ok {
+		h.logger.Logger.Error("Invalid organization ID format in context")
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "INVALID_CONTEXT",
+				"message": "Invalid organization context",
+			},
+		})
+		return
+	}
+
 	var req dto.CreateAppointmentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.logger.Logger.WithError(err).Warn("Invalid JSON for CreateAppointment")
@@ -145,14 +172,15 @@ func (h *AppointmentHandler) CreateAppointment(c *gin.Context) {
 	}
 
 	h.logger.Logger.WithFields(map[string]interface{}{
-		"patient_id": req.PatientID,
-		"doctor_id":  req.DoctorID,
-		"unit_id":    req.UnitID,
-		"start_time": req.StartTime,
-		"end_time":   req.EndTime,
+		"organization_id": orgUUID,
+		"patient_id":      req.PatientID,
+		"doctor_id":       req.DoctorID,
+		"unit_id":         req.UnitID,
+		"start_time":      req.StartTime,
+		"end_time":        req.EndTime,
 	}).Info("Creating new appointment")
 
-	response, err := h.appointmentUseCase.CreateAppointment(c.Request.Context(), &req)
+	response, err := h.appointmentUseCase.CreateAppointment(c.Request.Context(), orgUUID, &req)
 	if err != nil {
 		h.logger.Logger.WithError(err).Error("Failed to create appointment")
 

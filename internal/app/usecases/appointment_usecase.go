@@ -40,7 +40,7 @@ func NewAppointmentUseCase(
 }
 
 // CreateAppointment creates a new appointment with basic validation (no conflict checking)
-func (uc *AppointmentUseCase) CreateAppointment(ctx context.Context, req *dto.CreateAppointmentRequest) (*dto.AppointmentResponse, error) {
+func (uc *AppointmentUseCase) CreateAppointment(ctx context.Context, orgID uuid.UUID, req *dto.CreateAppointmentRequest) (*dto.AppointmentResponse, error) {
 	// Validate date logic: end date can't be before start date
 	if req.EndTime.Before(req.StartTime) {
 		return nil, fmt.Errorf("end time cannot be before start time")
@@ -81,6 +81,13 @@ func (uc *AppointmentUseCase) CreateAppointment(ctx context.Context, req *dto.Cr
 	// Create appointment directly in repository (no conflict checking)
 	if err := uc.appointmentRepo.Create(ctx, appointment); err != nil {
 		return nil, fmt.Errorf("failed to create appointment: %w", err)
+	}
+
+	// Link patient to organization (ignore errors if already linked)
+	if err := uc.patientRepo.AddPatientToOrganization(ctx, req.PatientID, orgID); err != nil {
+		// Log the error but don't fail the appointment creation
+		// The ON CONFLICT DO NOTHING in the query will handle duplicates gracefully
+		fmt.Printf("Warning: failed to link patient to organization: %v\n", err)
 	}
 
 	return dto.ToAppointmentResponse(appointment), nil

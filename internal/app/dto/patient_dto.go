@@ -76,3 +76,33 @@ func (req *UpdatePatientRequest) ToEntityUpdate(existing *entities.Patient) *ent
 	existing.UpdatedAt = time.Now()
 	return existing
 }
+
+// PatientSearchRequest represents the request to search patients
+type PatientSearchRequest struct {
+	Query string `form:"q,omitempty"`     // Search by name, phone, or email
+	Limit int    `form:"limit,omitempty"` // Max results (default: 50, max: 100)
+}
+
+// PatientSearchResponse represents minimal patient data for autocomplete
+type PatientSearchResponse struct {
+	ID    string  `json:"id"`
+	Name  string  `json:"name"`
+	Phone *string `json:"phone,omitempty"`
+	Email *string `json:"email,omitempty"`
+}
+
+// PatientSearchResult represents the wrapper for search results
+type PatientSearchResult struct {
+	Patients []PatientSearchResponse `json:"patients"`
+	Total    int                     `json:"total"`
+}
+
+// ToPatientSearchResponse converts entities.Patient to PatientSearchResponse
+func ToPatientSearchResponse(p *entities.Patient) PatientSearchResponse {
+	return PatientSearchResponse{
+		ID:    p.ID.String(),
+		Name:  p.Name,
+		Phone: p.Phone,
+		Email: p.Email,
+	}
+}

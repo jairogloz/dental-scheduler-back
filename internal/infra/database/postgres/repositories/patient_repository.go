@@ -208,3 +208,66 @@ func (r *PatientPostgresRepository) Exists(ctx context.Context, id uuid.UUID) (b
 
 	return exists, nil
 }
+
+// SearchPatients searches for patients by name, phone, or email within an organization
+func (r *PatientPostgresRepository) SearchPatients(ctx context.Context, orgID uuid.UUID, query string, limit int) ([]*entities.Patient, error) {
+	searchQuery := `
+		SELECT DISTINCT p.id, p.name, p.email, p.phone, p.date_of_birth, p.medical_history, p.created_at, p.updated_at
+		FROM patients p
+		INNER JOIN patient_organizations po ON p.id = po.patient_id
+		WHERE po.organization_id = $1
+		AND (
+			LOWER(p.name) LIKE LOWER($2) OR
+			LOWER(COALESCE(p.phone, '')) LIKE LOWER($2) OR
+			LOWER(COALESCE(p.email, '')) LIKE LOWER($2)
+		)
+		ORDER BY p.name
+		LIMIT $3`
+
+	searchTerm := "%" + query + "%"
+	rows, err := r.db.QueryContext(ctx, searchQuery, orgID, searchTerm, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search patients: %w", err)
+	}
+	defer rows.Close()
+
+	var patients []*entities.Patient
+	for rows.Next() {
+		var patient entities.Patient
+		err := rows.Scan(
+			&patient.ID,
+			&patient.Name,
+			&patient.Email,
+			&patient.Phone,
+			&patient.DateOfBirth,
+			&patient.MedicalHistory,
+			&patient.CreatedAt,
+			&patient.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan patient: %w", err)
+		}
+		patients = append(patients, &patient)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating over patient rows: %w", err)
+	}
+
+	return patients, nil
+}
+
+// AddPatientToOrganization links a patient to an organization
+func (r *PatientPostgresRepository) AddPatientToOrganization(ctx context.Context, patientID, orgID uuid.UUID) error {
+	query := `
+		INSERT INTO patient_organizations (patient_id, organization_id, created_at, updated_at)
+		VALUES ($1, $2, NOW(), NOW())
+		ON CONFLICT (patient_id, organization_id) DO NOTHING`
+
+	_, err := r.db.ExecContext(ctx, query, patientID, orgID)
+	if err != nil {
+		return fmt.Errorf("failed to add patient to organization: %w", err)
+	}
+
+	return nil
+}

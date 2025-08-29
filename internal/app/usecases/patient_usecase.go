@@ -103,3 +103,46 @@ func (uc *PatientUseCase) DeletePatient(ctx context.Context, id uuid.UUID) error
 
 	return uc.patientRepo.Delete(ctx, id)
 }
+
+// SearchPatients searches for patients within an organization for autocomplete
+func (uc *PatientUseCase) SearchPatients(ctx context.Context, orgID uuid.UUID, req *dto.PatientSearchRequest) (*dto.PatientSearchResult, error) {
+	// Set default limit if not provided
+	limit := req.Limit
+	if limit == 0 {
+		limit = 50 // Default limit
+	}
+	if limit > 100 {
+		limit = 100 // Max limit
+	}
+
+	// Search for patients
+	patients, err := uc.patientRepo.SearchPatients(ctx, orgID, req.Query, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to response DTOs
+	patientResponses := make([]dto.PatientSearchResponse, len(patients))
+	for i, patient := range patients {
+		patientResponses[i] = dto.ToPatientSearchResponse(patient)
+	}
+
+	return &dto.PatientSearchResult{
+		Patients: patientResponses,
+		Total:    len(patientResponses),
+	}, nil
+}
+
+// AddPatientToOrganization links a patient to an organization
+func (uc *PatientUseCase) AddPatientToOrganization(ctx context.Context, patientID, orgID uuid.UUID) error {
+	// Verify patient exists
+	exists, err := uc.patientRepo.Exists(ctx, patientID)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return entities.ErrPatientNotFound
+	}
+
+	return uc.patientRepo.AddPatientToOrganization(ctx, patientID, orgID)
+}

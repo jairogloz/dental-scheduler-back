@@ -30,4 +30,10 @@ type PatientRepository interface {
 
 	// Exists checks if a patient exists by its ID
 	Exists(ctx context.Context, id uuid.UUID) (bool, error)
+
+	// SearchPatients searches for patients by name, phone, or email within an organization
+	SearchPatients(ctx context.Context, orgID uuid.UUID, query string, limit int) ([]*entities.Patient, error)
+
+	// AddPatientToOrganization links a patient to an organization
+	AddPatientToOrganization(ctx context.Context, patientID, orgID uuid.UUID) error
 }
