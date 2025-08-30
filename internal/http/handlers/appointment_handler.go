@@ -132,7 +132,7 @@ func (h *AppointmentHandler) GetAppointments(c *gin.Context) {
 // @Router /appointments [post]
 func (h *AppointmentHandler) CreateAppointment(c *gin.Context) {
 	// Get organization ID from context (set by auth middleware)
-	orgID, exists := c.Get("organization_id")
+	orgID, exists := middleware.GetOrganizationIDFromContext(c)
 	if !exists {
 		h.logger.Logger.Error("Organization ID not found in context")
 		c.JSON(http.StatusUnauthorized, gin.H{
@@ -145,9 +145,9 @@ func (h *AppointmentHandler) CreateAppointment(c *gin.Context) {
 		return
 	}
 
-	orgUUID, ok := orgID.(uuid.UUID)
-	if !ok {
-		h.logger.Logger.Error("Invalid organization ID format in context")
+	orgUUID, err := uuid.Parse(orgID)
+	if err != nil {
+		h.logger.Logger.Error("Invalid organization ID format in context", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error": gin.H{
