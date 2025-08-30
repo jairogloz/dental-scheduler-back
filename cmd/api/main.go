@@ -56,6 +56,7 @@ func main() {
 	appointmentRepo := postgresRepos.NewAppointmentPostgresRepository(dbConn.GetDB())
 	availabilityRepo := postgresRepos.NewDoctorAvailabilityPostgresRepository(dbConn.GetDB())
 	userRepo := postgresRepos.NewUserPostgresRepository(dbConn.GetDB())
+	organizationRepo := postgresRepos.NewOrganizationPostgresRepository(dbConn.GetDB())
 
 	// Initialize domain services
 	conflictChecker := services.NewAppointmentConflictChecker(appointmentRepo, availabilityRepo)
@@ -80,6 +81,7 @@ func main() {
 		unitRepo,
 		schedulingService,
 	)
+	getOrgDataUseCase := usecases.NewGetOrganizationDataUseCase(organizationRepo)
 
 	// Initialize handlers
 	healthHandler := handlers.NewHealthHandler()
@@ -88,6 +90,7 @@ func main() {
 	doctorHandler := handlers.NewDoctorHandler(doctorUseCase, appLogger)
 	patientHandler := handlers.NewPatientHandler(patientUseCase, appLogger)
 	appointmentHandler := handlers.NewAppointmentHandler(appointmentUseCase, appLogger)
+	organizationHandler := handlers.NewOrganizationHandler(getOrgDataUseCase, appLogger)
 
 	// Set Gin mode
 	if cfg.Log.Level == "debug" {
@@ -113,6 +116,7 @@ func main() {
 		doctorHandler,
 		patientHandler,
 		appointmentHandler,
+		organizationHandler,
 		userRepo,
 		appLogger,
 	)

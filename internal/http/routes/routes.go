@@ -18,6 +18,7 @@ func SetupRoutes(
 	doctorHandler *handlers.DoctorHandler,
 	patientHandler *handlers.PatientHandler,
 	appointmentHandler *handlers.AppointmentHandler,
+	organizationHandler *handlers.OrganizationHandler,
 	userRepo repositories.UserRepository,
 	logger *logger.Logger,
 ) {
@@ -93,6 +94,9 @@ func SetupRoutes(
 				availability.PUT("/:id", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
 				availability.DELETE("/:id", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
 			}
+
+			// Organization data route for calendar loading
+			protected.GET("/organization", organizationHandler.GetOrganizationData)
 		}
 
 		// Optional authentication routes (user info is available if authenticated)
