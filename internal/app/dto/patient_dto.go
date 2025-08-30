@@ -17,6 +17,26 @@ type CreatePatientRequest struct {
 	MedicalHistory *string    `json:"medical_history,omitempty"`
 }
 
+// CreatePatientWithOrgRequest represents the request to create a patient with organization ID
+type CreatePatientWithOrgRequest struct {
+	CreatePatientRequest
+	OrganizationIDStr *string `form:"organization_id,omitempty"`
+}
+
+// GetOrganizationID parses and returns the organization ID as UUID
+func (req *CreatePatientWithOrgRequest) GetOrganizationID() (*uuid.UUID, error) {
+	if req.OrganizationIDStr == nil || *req.OrganizationIDStr == "" {
+		return nil, nil
+	}
+
+	orgID, err := uuid.Parse(*req.OrganizationIDStr)
+	if err != nil {
+		return nil, err
+	}
+
+	return &orgID, nil
+}
+
 // UpdatePatientRequest represents the request to update a patient
 type UpdatePatientRequest struct {
 	Name           string     `json:"name" binding:"required"`

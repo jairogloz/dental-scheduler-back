@@ -271,3 +271,62 @@ func (r *PatientPostgresRepository) AddPatientToOrganization(ctx context.Context
 
 	return nil
 }
+
+// OrganizationExists checks if an organization exists by its ID
+func (r *PatientPostgresRepository) OrganizationExists(ctx context.Context, orgID uuid.UUID) (bool, error) {
+	query := `SELECT EXISTS(SELECT 1 FROM organizations WHERE id = $1)`
+
+	var exists bool
+	err := r.db.QueryRowContext(ctx, query, orgID).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("failed to check organization existence: %w", err)
+	}
+
+	return exists, nil
+}
+
+// CreatePatientWithOrganization creates a patient and links to organization in a transaction
+func (r *PatientPostgresRepository) CreatePatientWithOrganization(ctx context.Context, patient *entities.Patient, orgID uuid.UUID) error {
+	// Start transaction
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Create patient
+	patientQuery := `
+		INSERT INTO patients (id, name, email, phone, date_of_birth, medical_history, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
+
+	_, err = tx.ExecContext(ctx, patientQuery,
+		patient.ID,
+		patient.Name,
+		patient.Email,
+		patient.Phone,
+		patient.DateOfBirth,
+		patient.MedicalHistory,
+		patient.CreatedAt,
+		patient.UpdatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create patient: %w", err)
+	}
+
+	// Link patient to organization
+	linkQuery := `
+		INSERT INTO patient_organizations (patient_id, organization_id, created_at, updated_at)
+		VALUES ($1, $2, NOW(), NOW())`
+
+	_, err = tx.ExecContext(ctx, linkQuery, patient.ID, orgID)
+	if err != nil {
+		return fmt.Errorf("failed to link patient to organization: %w", err)
+	}
+
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
+}

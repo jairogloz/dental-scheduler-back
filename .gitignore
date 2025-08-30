@@ -159,3 +159,5 @@ makefile.local
 # Documentation build
 docs/_build/
 site/
+
+api

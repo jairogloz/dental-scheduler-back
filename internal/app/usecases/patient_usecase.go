@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"fmt"
 
 	"dental-scheduler-backend/internal/app/dto"
 	"dental-scheduler-backend/internal/domain/entities"
@@ -32,6 +33,47 @@ func (uc *PatientUseCase) CreatePatient(ctx context.Context, req *dto.CreatePati
 
 	if err := uc.patientRepo.Create(ctx, patient); err != nil {
 		return nil, err
+	}
+
+	return dto.ToPatientResponse(patient), nil
+}
+
+// CreatePatientWithOrganization creates a new patient and optionally links to organization
+func (uc *PatientUseCase) CreatePatientWithOrganization(ctx context.Context, req *dto.CreatePatientWithOrgRequest) (*dto.PatientResponse, error) {
+	// Parse organization ID if provided
+	orgID, err := req.GetOrganizationID()
+	if err != nil {
+		return nil, fmt.Errorf("invalid organization_id format: %w", err)
+	}
+
+	// Validate organization exists if provided
+	if orgID != nil {
+		exists, err := uc.patientRepo.OrganizationExists(ctx, *orgID)
+		if err != nil {
+			return nil, err
+		}
+		if !exists {
+			return nil, entities.ErrOrganizationNotFound
+		}
+	}
+
+	// Create patient entity
+	patient := req.CreatePatientRequest.ToEntity()
+
+	if err := patient.Validate(); err != nil {
+		return nil, err
+	}
+
+	// If organization ID is provided, use transactional creation
+	if orgID != nil {
+		if err := uc.patientRepo.CreatePatientWithOrganization(ctx, patient, *orgID); err != nil {
+			return nil, err
+		}
+	} else {
+		// Create patient only
+		if err := uc.patientRepo.Create(ctx, patient); err != nil {
+			return nil, err
+		}
 	}
 
 	return dto.ToPatientResponse(patient), nil

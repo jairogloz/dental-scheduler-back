@@ -36,4 +36,10 @@ type PatientRepository interface {
 
 	// AddPatientToOrganization links a patient to an organization
 	AddPatientToOrganization(ctx context.Context, patientID, orgID uuid.UUID) error
+
+	// OrganizationExists checks if an organization exists by its ID
+	OrganizationExists(ctx context.Context, orgID uuid.UUID) (bool, error)
+
+	// CreatePatientWithOrganization creates a patient and links to organization in a transaction
+	CreatePatientWithOrganization(ctx context.Context, patient *entities.Patient, orgID uuid.UUID) error
 }
