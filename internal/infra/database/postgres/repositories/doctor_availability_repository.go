@@ -115,6 +115,25 @@ func (r *DoctorAvailabilityPostgresRepository) GetByDoctorIDAndDate(ctx context.
 	return r.scanAvailabilities(rows)
 }
 
+// GetByDoctorIDAndDateRange retrieves availability for a doctor within a date range
+func (r *DoctorAvailabilityPostgresRepository) GetByDoctorIDAndDateRange(ctx context.Context, doctorID uuid.UUID, startDate, endDate time.Time) ([]*entities.DoctorAvailability, error) {
+	query := `
+		SELECT id, doctor_id, start_time, end_time, recurrence_rule, is_available, created_at, updated_at
+		FROM doctor_availability
+		WHERE doctor_id = $1 
+		  AND start_time < $3 
+		  AND end_time > $2
+		ORDER BY start_time`
+
+	rows, err := r.db.QueryContext(ctx, query, doctorID, startDate, endDate)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get doctor availability by doctor ID and date range: %w", err)
+	}
+	defer rows.Close()
+
+	return r.scanAvailabilities(rows)
+}
+
 // Update updates an existing doctor availability
 func (r *DoctorAvailabilityPostgresRepository) Update(ctx context.Context, availability *entities.DoctorAvailability) error {
 	query := `

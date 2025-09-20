@@ -82,6 +82,7 @@ func main() {
 		schedulingService,
 	)
 	getOrgDataUseCase := usecases.NewGetOrganizationDataUseCase(organizationRepo)
+	getDoctorAvailabilityUseCase := usecases.NewGetDoctorAvailabilityUseCase(availabilityRepo, doctorRepo)
 
 	// Initialize handlers
 	healthHandler := handlers.NewHealthHandler()
@@ -91,6 +92,7 @@ func main() {
 	patientHandler := handlers.NewPatientHandler(patientUseCase, appLogger)
 	appointmentHandler := handlers.NewAppointmentHandler(appointmentUseCase, appLogger)
 	organizationHandler := handlers.NewOrganizationHandler(getOrgDataUseCase, appLogger)
+	doctorAvailabilityHandler := handlers.NewDoctorAvailabilityHandler(getDoctorAvailabilityUseCase, appLogger)
 
 	// Set Gin mode
 	if cfg.Log.Level == "debug" {
@@ -117,6 +119,7 @@ func main() {
 		patientHandler,
 		appointmentHandler,
 		organizationHandler,
+		doctorAvailabilityHandler,
 		userRepo,
 		appLogger,
 	)

@@ -23,6 +23,9 @@ type DoctorAvailabilityRepository interface {
 	// GetByDoctorIDAndDate retrieves availability for a doctor on a specific date
 	GetByDoctorIDAndDate(ctx context.Context, doctorID uuid.UUID, date time.Time) ([]*entities.DoctorAvailability, error)
 
+	// GetByDoctorIDAndDateRange retrieves availability for a doctor within a date range
+	GetByDoctorIDAndDateRange(ctx context.Context, doctorID uuid.UUID, startDate, endDate time.Time) ([]*entities.DoctorAvailability, error)
+
 	// Update updates an existing doctor availability
 	Update(ctx context.Context, availability *entities.DoctorAvailability) error
 

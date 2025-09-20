@@ -37,6 +37,17 @@ type DoctorAvailabilityResponse struct {
 	UpdatedAt      time.Time `json:"updated_at"`
 }
 
+// GetDoctorAvailabilityRequest represents the request for getting doctor availability
+type GetDoctorAvailabilityRequest struct {
+	StartDate string `form:"start_date" binding:"omitempty" example:"2024-01-01"`
+	EndDate   string `form:"end_date" binding:"omitempty" example:"2024-12-31"`
+}
+
+// GetDoctorAvailabilityResponse represents the response for getting doctor availability
+type GetDoctorAvailabilityResponse struct {
+	Availabilities []*DoctorAvailabilityResponse `json:"availabilities"`
+}
+
 // AvailableSlotResponse represents an available time slot
 type AvailableSlotResponse struct {
 	StartTime time.Time `json:"start_time"`
@@ -74,6 +85,18 @@ func ToDoctorAvailabilityResponse(da *entities.DoctorAvailability) *DoctorAvaila
 		CreatedAt:      da.CreatedAt,
 		UpdatedAt:      da.UpdatedAt,
 	}
+}
+
+// ToDoctorAvailabilityResponses converts multiple entities.DoctorAvailability to DoctorAvailabilityResponse slice
+func ToDoctorAvailabilityResponses(availabilities []*entities.DoctorAvailability) []*DoctorAvailabilityResponse {
+	if availabilities == nil {
+		return nil
+	}
+	responses := make([]*DoctorAvailabilityResponse, len(availabilities))
+	for i, availability := range availabilities {
+		responses[i] = ToDoctorAvailabilityResponse(availability)
+	}
+	return responses
 }
 
 // ToEntityUpdate converts UpdateDoctorAvailabilityRequest to updated entities.DoctorAvailability

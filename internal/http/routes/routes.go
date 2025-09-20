@@ -19,6 +19,7 @@ func SetupRoutes(
 	patientHandler *handlers.PatientHandler,
 	appointmentHandler *handlers.AppointmentHandler,
 	organizationHandler *handlers.OrganizationHandler,
+	doctorAvailabilityHandler *handlers.DoctorAvailabilityHandler,
 	userRepo repositories.UserRepository,
 	logger *logger.Logger,
 ) {
@@ -90,7 +91,7 @@ func SetupRoutes(
 			{
 				availability.POST("", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
 				availability.GET("", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
-				availability.GET("/:id", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
+				availability.GET("/:doctor_id", doctorAvailabilityHandler.GetDoctorAvailability) // Get availability for specific doctor
 				availability.PUT("/:id", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
 				availability.DELETE("/:id", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
 			}
