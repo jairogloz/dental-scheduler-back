@@ -35,6 +35,7 @@ type UpdateAppointmentRequest struct {
 type AppointmentResponse struct {
 	ID            uuid.UUID                  `json:"id"`
 	PatientID     uuid.UUID                  `json:"patient_id"`
+	PatientName   string                     `json:"patient_name"`
 	DoctorID      uuid.UUID                  `json:"doctor_id"`
 	UnitID        uuid.UUID                  `json:"unit_id"`
 	TreatmentType *string                    `json:"treatment_type,omitempty"`
@@ -151,6 +152,25 @@ func ToAppointmentResponse(a *entities.Appointment) *AppointmentResponse {
 	return &AppointmentResponse{
 		ID:            a.ID,
 		PatientID:     a.PatientID,
+		PatientName:   "", // Will be empty when patient name is not available
+		DoctorID:      a.DoctorID,
+		UnitID:        a.UnitID,
+		TreatmentType: a.TreatmentType,
+		Status:        a.Status,
+		StartTime:     a.StartTime,
+		EndTime:       a.EndTime,
+		Notes:         a.Notes,
+		CreatedAt:     a.CreatedAt,
+		UpdatedAt:     a.UpdatedAt,
+	}
+}
+
+// ToAppointmentResponseWithPatientName converts entities.Appointment to AppointmentResponse with patient name
+func ToAppointmentResponseWithPatientName(a *entities.Appointment, patientName string) *AppointmentResponse {
+	return &AppointmentResponse{
+		ID:            a.ID,
+		PatientID:     a.PatientID,
+		PatientName:   patientName,
 		DoctorID:      a.DoctorID,
 		UnitID:        a.UnitID,
 		TreatmentType: a.TreatmentType,

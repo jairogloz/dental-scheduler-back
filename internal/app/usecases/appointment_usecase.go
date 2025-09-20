@@ -90,7 +90,19 @@ func (uc *AppointmentUseCase) CreateAppointment(ctx context.Context, orgID uuid.
 		fmt.Printf("Warning: failed to link patient to organization: %v\n", err)
 	}
 
-	return dto.ToAppointmentResponse(appointment), nil
+	// Fetch patient data to include patient name in response
+	patient, err := uc.patientRepo.GetByID(ctx, req.PatientID)
+	if err != nil {
+		// If we can't get patient data, return response without patient name
+		return dto.ToAppointmentResponse(appointment), nil
+	}
+
+	patientName := ""
+	if patient != nil {
+		patientName = patient.Name
+	}
+
+	return dto.ToAppointmentResponseWithPatientName(appointment, patientName), nil
 }
 
 // GetAppointmentByID retrieves an appointment by its ID
