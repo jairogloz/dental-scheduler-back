@@ -10,9 +10,10 @@ import (
 type AppointmentStatus string
 
 const (
-	AppointmentStatusScheduled AppointmentStatus = "scheduled"
-	AppointmentStatusCompleted AppointmentStatus = "completed"
-	AppointmentStatusCancelled AppointmentStatus = "cancelled"
+	AppointmentStatusScheduled   AppointmentStatus = "scheduled"
+	AppointmentStatusCompleted   AppointmentStatus = "completed"
+	AppointmentStatusCancelled   AppointmentStatus = "cancelled"
+	AppointmentStatusRescheduled AppointmentStatus = "rescheduled"
 )
 
 // Appointment represents an appointment entity
@@ -52,6 +53,10 @@ func (a *Appointment) Validate() error {
 		return ErrEndTimeBeforeStartTime
 	}
 
+	if !IsValidAppointmentStatus(a.Status) {
+		return ErrInvalidAppointmentStatus
+	}
+
 	// Note: Past appointment time validation removed to allow scheduling/updating past appointments
 
 	return nil
@@ -82,6 +87,21 @@ func (a *Appointment) IsCancelled() bool {
 	return a.Status == AppointmentStatusCancelled
 }
 
+// IsRescheduled checks if the appointment is rescheduled
+func (a *Appointment) IsRescheduled() bool {
+	return a.Status == AppointmentStatusRescheduled
+}
+
+// IsValidStatus checks if the provided status is valid
+func IsValidAppointmentStatus(status AppointmentStatus) bool {
+	switch status {
+	case AppointmentStatusScheduled, AppointmentStatusCompleted, AppointmentStatusCancelled, AppointmentStatusRescheduled:
+		return true
+	default:
+		return false
+	}
+}
+
 // Cancel cancels the appointment
 func (a *Appointment) Cancel() {
 	a.Status = AppointmentStatusCancelled
@@ -91,5 +111,11 @@ func (a *Appointment) Cancel() {
 // Complete marks the appointment as completed
 func (a *Appointment) Complete() {
 	a.Status = AppointmentStatusCompleted
+	a.UpdatedAt = time.Now()
+}
+
+// Reschedule marks the appointment as rescheduled
+func (a *Appointment) Reschedule() {
+	a.Status = AppointmentStatusRescheduled
 	a.UpdatedAt = time.Now()
 }

@@ -148,6 +148,13 @@ func (uc *AppointmentUseCase) UpdateAppointment(ctx context.Context, id uuid.UUI
 		return nil, entities.ErrAppointmentNotFound
 	}
 
+	// Validate status if provided
+	if req.Status != nil {
+		if !entities.IsValidAppointmentStatus(entities.AppointmentStatus(*req.Status)) {
+			return nil, entities.ErrInvalidAppointmentStatus
+		}
+	}
+
 	// Verify entities exist only if they're being updated
 	if req.PatientID != nil {
 		patientExists, err := uc.patientRepo.Exists(ctx, *req.PatientID)
@@ -179,7 +186,21 @@ func (uc *AppointmentUseCase) UpdateAppointment(ctx context.Context, id uuid.UUI
 		}
 	}
 
+	// Check if date/time is being changed to automatically set status to rescheduled
+	dateChanged := false
+	if req.StartTime != nil && !req.StartTime.Equal(existing.StartTime) {
+		dateChanged = true
+	}
+	if req.EndTime != nil && !req.EndTime.Equal(existing.EndTime) {
+		dateChanged = true
+	}
+
 	updated := req.ToEntityUpdate(existing)
+
+	// If date changed and no explicit status provided, automatically set to rescheduled
+	if dateChanged && req.Status == nil {
+		updated.Status = entities.AppointmentStatusRescheduled
+	}
 
 	// Basic validation: if both start and end time are provided, validate the time logic
 	if req.StartTime != nil && req.EndTime != nil {
