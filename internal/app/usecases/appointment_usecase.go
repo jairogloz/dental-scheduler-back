@@ -293,9 +293,9 @@ func (uc *AppointmentUseCase) GetAppointmentsByOrganization(ctx context.Context,
 		return nil, fmt.Errorf("invalid end date format: %w", err)
 	}
 
-	// Validate date range (max 30 days)
-	if endDate.Sub(startDate) > 30*24*time.Hour {
-		return nil, fmt.Errorf("date range cannot exceed 30 days")
+	// Validate date range (max 90 days)
+	if endDate.Sub(startDate) > 90*24*time.Hour {
+		return nil, fmt.Errorf("date range cannot exceed 90 days")
 	}
 
 	// Set default pagination

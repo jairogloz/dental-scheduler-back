@@ -52,9 +52,7 @@ func (a *Appointment) Validate() error {
 		return ErrEndTimeBeforeStartTime
 	}
 
-	if a.StartTime.Before(time.Now()) {
-		return ErrPastAppointmentTime
-	}
+	// Note: Past appointment time validation removed to allow scheduling/updating past appointments
 
 	return nil
 }

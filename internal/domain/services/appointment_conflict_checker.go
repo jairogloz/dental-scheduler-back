@@ -32,10 +32,7 @@ func (acc *AppointmentConflictChecker) CheckForConflicts(
 	ctx context.Context,
 	appointment *entities.Appointment,
 ) error {
-	// Check if the appointment time is in the past
-	if appointment.StartTime.Before(time.Now()) {
-		return entities.ErrPastAppointmentTime
-	}
+	// Note: Past appointment time validation removed to allow scheduling/updating past appointments
 
 	// Check if end time is after start time
 	if appointment.EndTime.Before(appointment.StartTime) || appointment.EndTime.Equal(appointment.StartTime) {
