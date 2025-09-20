@@ -229,7 +229,19 @@ func (uc *AppointmentUseCase) UpdateAppointment(ctx context.Context, id uuid.UUI
 		return nil, err
 	}
 
-	return dto.ToAppointmentResponse(updated), nil
+	// Fetch patient data to include patient name in response
+	patient, err := uc.patientRepo.GetByID(ctx, updated.PatientID)
+	if err != nil {
+		// If we can't get patient data, return response without patient name
+		return dto.ToAppointmentResponse(updated), nil
+	}
+
+	patientName := ""
+	if patient != nil {
+		patientName = patient.Name
+	}
+
+	return dto.ToAppointmentResponseWithPatientName(updated, patientName), nil
 }
 
 // RescheduleAppointment reschedules an existing appointment
