@@ -5,6 +5,7 @@ import (
 
 	"dental-scheduler-backend/internal/app/dto"
 	"dental-scheduler-backend/internal/app/usecases"
+	"dental-scheduler-backend/internal/domain/entities"
 	"dental-scheduler-backend/internal/http/middleware"
 	"dental-scheduler-backend/internal/infra/logger"
 
@@ -280,6 +281,148 @@ func (h *AppointmentHandler) GetAppointmentByID(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    response,
+	})
+}
+
+// UpdateAppointment handles PATCH /appointments/{appointment_id}
+func (h *AppointmentHandler) UpdateAppointment(c *gin.Context) {
+	// Get appointment ID from path parameter
+	appointmentIDStr := c.Param("appointment_id")
+	appointmentID, err := uuid.Parse(appointmentIDStr)
+	if err != nil {
+		h.logger.Logger.WithError(err).Error("Invalid appointment ID format")
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "INVALID_APPOINTMENT_ID",
+				"message": "Invalid appointment ID format. Must be a valid UUID.",
+			},
+		})
+		return
+	}
+
+	// Get organization ID from context (set by auth middleware)
+	orgIDStr, exists := middleware.GetOrganizationIDFromContext(c)
+	if !exists {
+		h.logger.Logger.Error("Organization ID not found in context")
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "UNAUTHORIZED",
+				"message": "Organization context required",
+			},
+		})
+		return
+	}
+
+	orgID, err := uuid.Parse(orgIDStr)
+	if err != nil {
+		h.logger.Logger.Error("Invalid organization ID format in context")
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "INTERNAL_ERROR",
+				"message": "Invalid organization context",
+			},
+		})
+		return
+	}
+
+	// Bind and validate request body
+	var req dto.UpdateAppointmentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Logger.WithError(err).Error("Failed to bind update appointment request")
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "INVALID_REQUEST",
+				"message": "Invalid request body",
+				"details": err.Error(),
+			},
+		})
+		return
+	}
+
+	// Log the request
+	logFields := map[string]interface{}{
+		"appointment_id":  appointmentID,
+		"organization_id": orgID,
+	}
+	if req.PatientID != nil {
+		logFields["patient_id"] = *req.PatientID
+	}
+	if req.DoctorID != nil {
+		logFields["doctor_id"] = *req.DoctorID
+	}
+	if req.UnitID != nil {
+		logFields["unit_id"] = *req.UnitID
+	}
+	h.logger.Logger.WithFields(logFields).Info("Updating appointment")
+
+	// Execute use case
+	result, err := h.appointmentUseCase.UpdateAppointment(c.Request.Context(), appointmentID, &req)
+	if err != nil {
+		h.logger.Logger.WithError(err).Error("Failed to update appointment")
+
+		// Handle specific domain errors
+		switch err {
+		case entities.ErrAppointmentNotFound:
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"error": gin.H{
+					"code":    "APPOINTMENT_NOT_FOUND",
+					"message": "Appointment not found",
+				},
+			})
+		case entities.ErrPatientNotFound:
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"error": gin.H{
+					"code":    "PATIENT_NOT_FOUND",
+					"message": "Patient not found",
+				},
+			})
+		case entities.ErrDoctorNotFound:
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"error": gin.H{
+					"code":    "DOCTOR_NOT_FOUND",
+					"message": "Doctor not found",
+				},
+			})
+		case entities.ErrUnitNotFound:
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"error": gin.H{
+					"code":    "UNIT_NOT_FOUND",
+					"message": "Unit not found",
+				},
+			})
+		default:
+			// Handle validation errors and other errors
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"error": gin.H{
+					"code":    "INVALID_REQUEST",
+					"message": err.Error(),
+				},
+			})
+		}
+		return
+	}
+
+	// Log success
+	h.logger.Logger.WithFields(map[string]interface{}{
+		"appointment_id": appointmentID,
+		"patient_id":     result.PatientID,
+		"doctor_id":      result.DoctorID,
+		"unit_id":        result.UnitID,
+	}).Info("Successfully updated appointment")
+
+	// Return successful response
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    result,
 	})
 }
 

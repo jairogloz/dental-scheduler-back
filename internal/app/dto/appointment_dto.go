@@ -19,15 +19,15 @@ type CreateAppointmentRequest struct {
 	Notes         *string   `json:"notes,omitempty"`
 }
 
-// UpdateAppointmentRequest represents the request to update an appointment
+// UpdateAppointmentRequest represents the request to update an appointment (partial updates)
 type UpdateAppointmentRequest struct {
-	PatientID     uuid.UUID                   `json:"patient_id" binding:"required"`
-	DoctorID      uuid.UUID                   `json:"doctor_id" binding:"required"`
-	UnitID        uuid.UUID                   `json:"unit_id" binding:"required"`
+	PatientID     *uuid.UUID                  `json:"patient_id,omitempty"`
+	DoctorID      *uuid.UUID                  `json:"doctor_id,omitempty"`
+	UnitID        *uuid.UUID                  `json:"unit_id,omitempty"`
 	TreatmentType *string                     `json:"treatment_type,omitempty"`
 	Status        *entities.AppointmentStatus `json:"status,omitempty"`
-	StartTime     time.Time                   `json:"start_time" binding:"required"`
-	EndTime       time.Time                   `json:"end_time" binding:"required"`
+	StartTime     *time.Time                  `json:"start_time,omitempty"`
+	EndTime       *time.Time                  `json:"end_time,omitempty"`
 	Notes         *string                     `json:"notes,omitempty"`
 }
 
@@ -163,18 +163,33 @@ func ToAppointmentResponse(a *entities.Appointment) *AppointmentResponse {
 	}
 }
 
-// ToEntityUpdate converts UpdateAppointmentRequest to updated entities.Appointment
+// ToEntityUpdate converts UpdateAppointmentRequest to updated entities.Appointment (partial updates)
 func (req *UpdateAppointmentRequest) ToEntityUpdate(existing *entities.Appointment) *entities.Appointment {
-	existing.PatientID = req.PatientID
-	existing.DoctorID = req.DoctorID
-	existing.UnitID = req.UnitID
-	existing.TreatmentType = req.TreatmentType
+	// Only update fields that are provided (not nil)
+	if req.PatientID != nil {
+		existing.PatientID = *req.PatientID
+	}
+	if req.DoctorID != nil {
+		existing.DoctorID = *req.DoctorID
+	}
+	if req.UnitID != nil {
+		existing.UnitID = *req.UnitID
+	}
+	if req.TreatmentType != nil {
+		existing.TreatmentType = req.TreatmentType
+	}
 	if req.Status != nil {
 		existing.Status = *req.Status
 	}
-	existing.StartTime = req.StartTime
-	existing.EndTime = req.EndTime
-	existing.Notes = req.Notes
+	if req.StartTime != nil {
+		existing.StartTime = *req.StartTime
+	}
+	if req.EndTime != nil {
+		existing.EndTime = *req.EndTime
+	}
+	if req.Notes != nil {
+		existing.Notes = req.Notes
+	}
 	existing.UpdatedAt = time.Now()
 	return existing
 }

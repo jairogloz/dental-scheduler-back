@@ -148,55 +148,48 @@ func (uc *AppointmentUseCase) UpdateAppointment(ctx context.Context, id uuid.UUI
 		return nil, entities.ErrAppointmentNotFound
 	}
 
-	// Verify patient exists
-	patientExists, err := uc.patientRepo.Exists(ctx, req.PatientID)
-	if err != nil {
-		return nil, err
-	}
-	if !patientExists {
-		return nil, entities.ErrPatientNotFound
-	}
-
-	// Verify doctor exists
-	doctorExists, err := uc.doctorRepo.Exists(ctx, req.DoctorID)
-	if err != nil {
-		return nil, err
-	}
-	if !doctorExists {
-		return nil, entities.ErrDoctorNotFound
+	// Verify entities exist only if they're being updated
+	if req.PatientID != nil {
+		patientExists, err := uc.patientRepo.Exists(ctx, *req.PatientID)
+		if err != nil {
+			return nil, err
+		}
+		if !patientExists {
+			return nil, entities.ErrPatientNotFound
+		}
 	}
 
-	// Verify unit exists
-	unitExists, err := uc.unitRepo.Exists(ctx, req.UnitID)
-	if err != nil {
-		return nil, err
+	if req.DoctorID != nil {
+		doctorExists, err := uc.doctorRepo.Exists(ctx, *req.DoctorID)
+		if err != nil {
+			return nil, err
+		}
+		if !doctorExists {
+			return nil, entities.ErrDoctorNotFound
+		}
 	}
-	if !unitExists {
-		return nil, entities.ErrUnitNotFound
+
+	if req.UnitID != nil {
+		unitExists, err := uc.unitRepo.Exists(ctx, *req.UnitID)
+		if err != nil {
+			return nil, err
+		}
+		if !unitExists {
+			return nil, entities.ErrUnitNotFound
+		}
 	}
 
 	updated := req.ToEntityUpdate(existing)
 
-	if err := updated.Validate(); err != nil {
-		return nil, err
+	// Basic validation: if both start and end time are provided, validate the time logic
+	if req.StartTime != nil && req.EndTime != nil {
+		if updated.EndTime.Before(updated.StartTime) || updated.EndTime.Equal(updated.StartTime) {
+			return nil, fmt.Errorf("end time must be after start time")
+		}
 	}
 
-	// Check for conflicts if time has changed
-	if !updated.StartTime.Equal(existing.StartTime) || !updated.EndTime.Equal(existing.EndTime) {
-		hasConflict, err := uc.appointmentRepo.CheckConflict(
-			ctx,
-			updated.DoctorID,
-			updated.UnitID,
-			updated.StartTime,
-			updated.EndTime,
-			&updated.ID,
-		)
-		if err != nil {
-			return nil, err
-		}
-		if hasConflict {
-			return nil, entities.ErrAppointmentConflict
-		}
+	if err := updated.Validate(); err != nil {
+		return nil, err
 	}
 
 	if err := uc.appointmentRepo.Update(ctx, updated); err != nil {
