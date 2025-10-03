@@ -26,14 +26,6 @@ deps:
 	go mod download
 	go mod tidy
 
-# Database configuration (can be overridden with environment variables)
-DB_HOST ?= aws-1-us-east-2.pooler.supabase.com
-DB_PORT ?= 5432
-DB_USER ?= postgres.wxwpuooiyeblrqntyewq
-DB_PASSWORD ?= 5a9MBf1AJlWpHHIN
-DB_NAME ?= postgres
-DB_SSL_MODE ?= disable
-
 # Construct database URL
 DB_URL = postgresql://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSL_MODE)
 
@@ -83,7 +75,7 @@ docker-down:
 
 # Development helpers
 dev:
-	air # Requires air for hot reload: go install github.com/cosmtrek/air@latest
+	export $$(cat .env.dev | grep -v '^#' | grep -v '^$$' | xargs) && go run ./cmd/api
 
 fmt:
 	go fmt ./...
