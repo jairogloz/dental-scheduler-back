@@ -224,7 +224,7 @@ func (r *OrganizationPostgresRepository) getAppointmentsByOrganization(ctx conte
 	query := `
 		SELECT DISTINCT 
 			a.id, 
-			p.name as patient_name,
+			CONCAT(p.first_name, ' ', COALESCE(p.last_name, '')) as patient_name,
 			p.phone as patient_phone,
 			a.doctor_id,
 			c.id as clinic_id,

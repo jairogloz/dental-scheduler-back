@@ -10,7 +10,8 @@ import (
 type Patient struct {
 	ID             uuid.UUID  `json:"id" db:"id"`
 	UserID         *uuid.UUID `json:"user_id,omitempty" db:"user_id"` // Links to auth.users(id)
-	Name           string     `json:"name" db:"name"`
+	FirstName      string     `json:"first_name" db:"first_name"`
+	LastName       *string    `json:"last_name,omitempty" db:"last_name"`
 	Email          *string    `json:"email,omitempty" db:"email"`
 	Phone          *string    `json:"phone,omitempty" db:"phone"`
 	DateOfBirth    *time.Time `json:"date_of_birth,omitempty" db:"date_of_birth"`
@@ -21,7 +22,7 @@ type Patient struct {
 
 // Validate checks if the patient entity is valid
 func (p *Patient) Validate() error {
-	if p.Name == "" {
+	if p.FirstName == "" {
 		return ErrInvalidPatientName
 	}
 

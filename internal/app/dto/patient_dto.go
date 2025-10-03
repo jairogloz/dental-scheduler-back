@@ -10,7 +10,8 @@ import (
 
 // CreatePatientRequest represents the request to create a patient
 type CreatePatientRequest struct {
-	Name           string     `json:"name" binding:"required"`
+	FirstName      string     `json:"first_name" binding:"required"`
+	LastName       *string    `json:"last_name,omitempty"`
 	Email          *string    `json:"email,omitempty"`
 	Phone          *string    `json:"phone,omitempty"`
 	DateOfBirth    *time.Time `json:"date_of_birth,omitempty"`
@@ -39,7 +40,8 @@ func (req *CreatePatientWithOrgRequest) GetOrganizationID() (*uuid.UUID, error) 
 
 // UpdatePatientRequest represents the request to update a patient
 type UpdatePatientRequest struct {
-	Name           string     `json:"name" binding:"required"`
+	FirstName      string     `json:"first_name" binding:"required"`
+	LastName       *string    `json:"last_name,omitempty"`
 	Email          *string    `json:"email,omitempty"`
 	Phone          *string    `json:"phone,omitempty"`
 	DateOfBirth    *time.Time `json:"date_of_birth,omitempty"`
@@ -49,7 +51,8 @@ type UpdatePatientRequest struct {
 // PatientResponse represents the response for a patient
 type PatientResponse struct {
 	ID             uuid.UUID  `json:"id"`
-	Name           string     `json:"name"`
+	FirstName      string     `json:"first_name"`
+	LastName       *string    `json:"last_name,omitempty"`
 	Email          *string    `json:"email,omitempty"`
 	Phone          *string    `json:"phone,omitempty"`
 	DateOfBirth    *time.Time `json:"date_of_birth,omitempty"`
@@ -62,7 +65,8 @@ type PatientResponse struct {
 func (req *CreatePatientRequest) ToEntity() *entities.Patient {
 	return &entities.Patient{
 		ID:             uuid.New(),
-		Name:           req.Name,
+		FirstName:      req.FirstName,
+		LastName:       req.LastName,
 		Email:          req.Email,
 		Phone:          req.Phone,
 		DateOfBirth:    req.DateOfBirth,
@@ -76,7 +80,8 @@ func (req *CreatePatientRequest) ToEntity() *entities.Patient {
 func ToPatientResponse(p *entities.Patient) *PatientResponse {
 	return &PatientResponse{
 		ID:             p.ID,
-		Name:           p.Name,
+		FirstName:      p.FirstName,
+		LastName:       p.LastName,
 		Email:          p.Email,
 		Phone:          p.Phone,
 		DateOfBirth:    p.DateOfBirth,
@@ -88,7 +93,8 @@ func ToPatientResponse(p *entities.Patient) *PatientResponse {
 
 // ToEntityUpdate converts UpdatePatientRequest to updated entities.Patient
 func (req *UpdatePatientRequest) ToEntityUpdate(existing *entities.Patient) *entities.Patient {
-	existing.Name = req.Name
+	existing.FirstName = req.FirstName
+	existing.LastName = req.LastName
 	existing.Email = req.Email
 	existing.Phone = req.Phone
 	existing.DateOfBirth = req.DateOfBirth
@@ -119,9 +125,15 @@ type PatientSearchResult struct {
 
 // ToPatientSearchResponse converts entities.Patient to PatientSearchResponse
 func ToPatientSearchResponse(p *entities.Patient) PatientSearchResponse {
+	// Combine first and last name for display
+	name := p.FirstName
+	if p.LastName != nil && *p.LastName != "" {
+		name += " " + *p.LastName
+	}
+
 	return PatientSearchResponse{
 		ID:    p.ID.String(),
-		Name:  p.Name,
+		Name:  name,
 		Phone: p.Phone,
 		Email: p.Email,
 	}

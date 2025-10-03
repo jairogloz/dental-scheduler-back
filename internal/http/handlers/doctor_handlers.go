@@ -121,8 +121,9 @@ func (h *PatientHandler) CreatePatient(c *gin.Context) {
 	}
 
 	h.logger.Logger.WithFields(map[string]interface{}{
-		"patient_name":    req.Name,
-		"organization_id": req.OrganizationIDStr,
+		"patient_first_name": req.FirstName,
+		"patient_last_name":  req.LastName,
+		"organization_id":    req.OrganizationIDStr,
 	}).Info("Creating new patient")
 
 	// Call use case

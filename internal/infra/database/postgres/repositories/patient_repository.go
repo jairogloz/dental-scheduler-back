@@ -24,12 +24,13 @@ func NewPatientPostgresRepository(db *sql.DB) repositories.PatientRepository {
 // Create creates a new patient
 func (r *PatientPostgresRepository) Create(ctx context.Context, patient *entities.Patient) error {
 	query := `
-		INSERT INTO patients (id, name, email, phone, date_of_birth, medical_history, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
+		INSERT INTO patients (id, first_name, last_name, email, phone, date_of_birth, medical_history, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 
 	_, err := r.db.ExecContext(ctx, query,
 		patient.ID,
-		patient.Name,
+		patient.FirstName,
+		patient.LastName,
 		patient.Email,
 		patient.Phone,
 		patient.DateOfBirth,
@@ -48,14 +49,15 @@ func (r *PatientPostgresRepository) Create(ctx context.Context, patient *entitie
 // GetByID retrieves a patient by its ID
 func (r *PatientPostgresRepository) GetByID(ctx context.Context, id uuid.UUID) (*entities.Patient, error) {
 	query := `
-		SELECT id, name, email, phone, date_of_birth, medical_history, created_at, updated_at
+		SELECT id, first_name, last_name, email, phone, date_of_birth, medical_history, created_at, updated_at
 		FROM patients
 		WHERE id = $1`
 
 	var patient entities.Patient
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&patient.ID,
-		&patient.Name,
+		&patient.FirstName,
+		&patient.LastName,
 		&patient.Email,
 		&patient.Phone,
 		&patient.DateOfBirth,
@@ -77,9 +79,9 @@ func (r *PatientPostgresRepository) GetByID(ctx context.Context, id uuid.UUID) (
 // GetAll retrieves all patients
 func (r *PatientPostgresRepository) GetAll(ctx context.Context) ([]*entities.Patient, error) {
 	query := `
-		SELECT id, name, email, phone, date_of_birth, medical_history, created_at, updated_at
+		SELECT id, first_name, last_name, email, phone, date_of_birth, medical_history, created_at, updated_at
 		FROM patients
-		ORDER BY name`
+		ORDER BY first_name, last_name`
 
 	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
@@ -92,7 +94,8 @@ func (r *PatientPostgresRepository) GetAll(ctx context.Context) ([]*entities.Pat
 		var patient entities.Patient
 		err := rows.Scan(
 			&patient.ID,
-			&patient.Name,
+			&patient.FirstName,
+			&patient.LastName,
 			&patient.Email,
 			&patient.Phone,
 			&patient.DateOfBirth,
@@ -116,14 +119,15 @@ func (r *PatientPostgresRepository) GetAll(ctx context.Context) ([]*entities.Pat
 // GetByEmail retrieves a patient by email
 func (r *PatientPostgresRepository) GetByEmail(ctx context.Context, email string) (*entities.Patient, error) {
 	query := `
-		SELECT id, name, email, phone, date_of_birth, medical_history, created_at, updated_at
+		SELECT id, first_name, last_name, email, phone, date_of_birth, medical_history, created_at, updated_at
 		FROM patients
 		WHERE email = $1`
 
 	var patient entities.Patient
 	err := r.db.QueryRowContext(ctx, query, email).Scan(
 		&patient.ID,
-		&patient.Name,
+		&patient.FirstName,
+		&patient.LastName,
 		&patient.Email,
 		&patient.Phone,
 		&patient.DateOfBirth,
@@ -146,12 +150,13 @@ func (r *PatientPostgresRepository) GetByEmail(ctx context.Context, email string
 func (r *PatientPostgresRepository) Update(ctx context.Context, patient *entities.Patient) error {
 	query := `
 		UPDATE patients
-		SET name = $2, email = $3, phone = $4, date_of_birth = $5, medical_history = $6, updated_at = $7
+		SET first_name = $2, last_name = $3, email = $4, phone = $5, date_of_birth = $6, medical_history = $7, updated_at = $8
 		WHERE id = $1`
 
 	result, err := r.db.ExecContext(ctx, query,
 		patient.ID,
-		patient.Name,
+		patient.FirstName,
+		patient.LastName,
 		patient.Email,
 		patient.Phone,
 		patient.DateOfBirth,
@@ -212,16 +217,16 @@ func (r *PatientPostgresRepository) Exists(ctx context.Context, id uuid.UUID) (b
 // SearchPatients searches for patients by name, phone, or email within an organization
 func (r *PatientPostgresRepository) SearchPatients(ctx context.Context, orgID uuid.UUID, query string, limit int) ([]*entities.Patient, error) {
 	searchQuery := `
-		SELECT DISTINCT p.id, p.name, p.email, p.phone, p.date_of_birth, p.medical_history, p.created_at, p.updated_at
+		SELECT DISTINCT p.id, p.first_name, p.last_name, p.email, p.phone, p.date_of_birth, p.medical_history, p.created_at, p.updated_at
 		FROM patients p
 		INNER JOIN patient_organizations po ON p.id = po.patient_id
 		WHERE po.organization_id = $1
 		AND (
-			LOWER(p.name) LIKE LOWER($2) OR
+			LOWER(CONCAT(p.first_name, ' ', COALESCE(p.last_name, ''))) LIKE LOWER($2) OR
 			LOWER(COALESCE(p.phone, '')) LIKE LOWER($2) OR
 			LOWER(COALESCE(p.email, '')) LIKE LOWER($2)
 		)
-		ORDER BY p.name
+		ORDER BY p.first_name, p.last_name
 		LIMIT $3`
 
 	searchTerm := "%" + query + "%"
@@ -236,7 +241,8 @@ func (r *PatientPostgresRepository) SearchPatients(ctx context.Context, orgID uu
 		var patient entities.Patient
 		err := rows.Scan(
 			&patient.ID,
-			&patient.Name,
+			&patient.FirstName,
+			&patient.LastName,
 			&patient.Email,
 			&patient.Phone,
 			&patient.DateOfBirth,
@@ -296,12 +302,13 @@ func (r *PatientPostgresRepository) CreatePatientWithOrganization(ctx context.Co
 
 	// Create patient
 	patientQuery := `
-		INSERT INTO patients (id, name, email, phone, date_of_birth, medical_history, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
+		INSERT INTO patients (id, first_name, last_name, email, phone, date_of_birth, medical_history, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 
 	_, err = tx.ExecContext(ctx, patientQuery,
 		patient.ID,
-		patient.Name,
+		patient.FirstName,
+		patient.LastName,
 		patient.Email,
 		patient.Phone,
 		patient.DateOfBirth,

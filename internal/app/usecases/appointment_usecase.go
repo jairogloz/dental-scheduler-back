@@ -99,7 +99,10 @@ func (uc *AppointmentUseCase) CreateAppointment(ctx context.Context, orgID uuid.
 
 	patientName := ""
 	if patient != nil {
-		patientName = patient.Name
+		patientName = patient.FirstName
+		if patient.LastName != nil && *patient.LastName != "" {
+			patientName += " " + *patient.LastName
+		}
 	}
 
 	return dto.ToAppointmentResponseWithPatientName(appointment, patientName), nil
@@ -238,7 +241,10 @@ func (uc *AppointmentUseCase) UpdateAppointment(ctx context.Context, id uuid.UUI
 
 	patientName := ""
 	if patient != nil {
-		patientName = patient.Name
+		patientName = patient.FirstName
+		if patient.LastName != nil && *patient.LastName != "" {
+			patientName += " " + *patient.LastName
+		}
 	}
 
 	return dto.ToAppointmentResponseWithPatientName(updated, patientName), nil
@@ -404,10 +410,15 @@ func (uc *AppointmentUseCase) buildAppointmentResponse(appointments []*repositor
 
 	for i, appt := range appointments {
 		// Build appointment DTO
+		patientName := appt.Patient.FirstName
+		if appt.Patient.LastName != nil && *appt.Patient.LastName != "" {
+			patientName += " " + *appt.Patient.LastName
+		}
+
 		appointmentDTOs[i] = dto.AppointmentListResponse{
 			ID:            appt.Appointment.ID.String(),
 			PatientID:     appt.Appointment.PatientID.String(),
-			PatientName:   appt.Patient.Name,
+			PatientName:   patientName,
 			PatientPhone:  getStringPtr(appt.Patient.Phone),
 			DoctorID:      appt.Appointment.DoctorID.String(),
 			DoctorName:    appt.Doctor.Name,
