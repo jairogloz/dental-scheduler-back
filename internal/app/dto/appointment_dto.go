@@ -98,6 +98,7 @@ type AppointmentListResponse struct {
 	Status        string    `json:"status"`
 	TreatmentType string    `json:"treatment_type,omitempty"`
 	Notes         string    `json:"notes,omitempty"`
+	IsFirstVisit  bool      `json:"is_first_visit"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
 }

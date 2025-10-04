@@ -433,6 +433,12 @@ func (uc *AppointmentUseCase) buildAppointmentResponse(appointments []*repositor
 			patientName += " " + *appt.Patient.LastName
 		}
 
+		// Determine if this is the patient's first visit
+		isFirstVisit := false
+		if appt.Patient.FirstAppointmentID != nil && *appt.Patient.FirstAppointmentID == appt.Appointment.ID {
+			isFirstVisit = true
+		}
+
 		appointmentDTOs[i] = dto.AppointmentListResponse{
 			ID:            appt.Appointment.ID.String(),
 			PatientID:     appt.Appointment.PatientID.String(),
@@ -449,6 +455,7 @@ func (uc *AppointmentUseCase) buildAppointmentResponse(appointments []*repositor
 			Status:        string(appt.Appointment.Status),
 			TreatmentType: getStringPtr(appt.Appointment.TreatmentType),
 			Notes:         getStringPtr(appt.Appointment.Notes),
+			IsFirstVisit:  isFirstVisit,
 			CreatedAt:     appt.Appointment.CreatedAt,
 			UpdatedAt:     appt.Appointment.UpdatedAt,
 		}

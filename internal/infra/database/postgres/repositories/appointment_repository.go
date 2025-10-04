@@ -383,7 +383,7 @@ func (r *AppointmentPostgresRepository) GetByOrganizationAndDateRange(ctx contex
 		SELECT 
 			a.id, a.patient_id, a.doctor_id, a.unit_id, a.treatment_type, a.status, 
 			a.start_time, a.end_time, a.notes, a.created_at, a.updated_at,
-			p.id, p.first_name, p.last_name, p.phone, p.email, p.created_at, p.updated_at,
+			p.id, p.first_name, p.last_name, p.phone, p.email, p.first_appointment_id, p.created_at, p.updated_at,
 			d.id, d.organization_id, d.user_id, d.name, d.specialty, d.email, d.phone, d.is_active, d.created_at, d.updated_at,
 			u.id, u.name, u.description, u.clinic_id, u.created_at, u.updated_at,
 			c.id, c.name, c.address, c.phone, c.email, c.organization_id, c.created_at, c.updated_at`
@@ -436,6 +436,7 @@ func (r *AppointmentPostgresRepository) GetByOrganizationAndDateRange(ctx contex
 			&patient.LastName,
 			&patient.Phone,
 			&patient.Email,
+			&patient.FirstAppointmentID,
 			&patient.CreatedAt,
 			&patient.UpdatedAt,
 			// Doctor fields
