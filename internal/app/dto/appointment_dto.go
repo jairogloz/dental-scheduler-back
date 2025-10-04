@@ -43,6 +43,7 @@ type AppointmentResponse struct {
 	StartTime     time.Time                  `json:"start_time"`
 	EndTime       time.Time                  `json:"end_time"`
 	Notes         *string                    `json:"notes,omitempty"`
+	IsFirstVisit  bool                       `json:"is_first_visit"`
 	CreatedAt     time.Time                  `json:"created_at"`
 	UpdatedAt     time.Time                  `json:"updated_at"`
 }
@@ -160,6 +161,7 @@ func ToAppointmentResponse(a *entities.Appointment) *AppointmentResponse {
 		StartTime:     a.StartTime,
 		EndTime:       a.EndTime,
 		Notes:         a.Notes,
+		IsFirstVisit:  false, // Default to false when patient info not available
 		CreatedAt:     a.CreatedAt,
 		UpdatedAt:     a.UpdatedAt,
 	}
@@ -178,6 +180,26 @@ func ToAppointmentResponseWithPatientName(a *entities.Appointment, patientName s
 		StartTime:     a.StartTime,
 		EndTime:       a.EndTime,
 		Notes:         a.Notes,
+		IsFirstVisit:  false, // Default to false, use WithPatientNameAndFirstVisit for accurate flag
+		CreatedAt:     a.CreatedAt,
+		UpdatedAt:     a.UpdatedAt,
+	}
+}
+
+// ToAppointmentResponseWithPatientNameAndFirstVisit converts entities.Appointment to AppointmentResponse with all patient details
+func ToAppointmentResponseWithPatientNameAndFirstVisit(a *entities.Appointment, patientName string, isFirstVisit bool) *AppointmentResponse {
+	return &AppointmentResponse{
+		ID:            a.ID,
+		PatientID:     a.PatientID,
+		PatientName:   patientName,
+		DoctorID:      a.DoctorID,
+		UnitID:        a.UnitID,
+		TreatmentType: a.TreatmentType,
+		Status:        a.Status,
+		StartTime:     a.StartTime,
+		EndTime:       a.EndTime,
+		Notes:         a.Notes,
+		IsFirstVisit:  isFirstVisit,
 		CreatedAt:     a.CreatedAt,
 		UpdatedAt:     a.UpdatedAt,
 	}

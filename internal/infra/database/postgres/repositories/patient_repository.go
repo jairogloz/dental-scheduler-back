@@ -49,7 +49,7 @@ func (r *PatientPostgresRepository) Create(ctx context.Context, patient *entitie
 // GetByID retrieves a patient by its ID
 func (r *PatientPostgresRepository) GetByID(ctx context.Context, id uuid.UUID) (*entities.Patient, error) {
 	query := `
-		SELECT id, first_name, last_name, email, phone, date_of_birth, medical_history, created_at, updated_at
+		SELECT id, first_name, last_name, email, phone, date_of_birth, medical_history, first_appointment_id, created_at, updated_at
 		FROM patients
 		WHERE id = $1`
 
@@ -62,6 +62,7 @@ func (r *PatientPostgresRepository) GetByID(ctx context.Context, id uuid.UUID) (
 		&patient.Phone,
 		&patient.DateOfBirth,
 		&patient.MedicalHistory,
+		&patient.FirstAppointmentID,
 		&patient.CreatedAt,
 		&patient.UpdatedAt,
 	)
@@ -79,7 +80,7 @@ func (r *PatientPostgresRepository) GetByID(ctx context.Context, id uuid.UUID) (
 // GetAll retrieves all patients
 func (r *PatientPostgresRepository) GetAll(ctx context.Context) ([]*entities.Patient, error) {
 	query := `
-		SELECT id, first_name, last_name, email, phone, date_of_birth, medical_history, created_at, updated_at
+		SELECT id, first_name, last_name, email, phone, date_of_birth, medical_history, first_appointment_id, created_at, updated_at
 		FROM patients
 		ORDER BY first_name, last_name`
 
@@ -100,6 +101,7 @@ func (r *PatientPostgresRepository) GetAll(ctx context.Context) ([]*entities.Pat
 			&patient.Phone,
 			&patient.DateOfBirth,
 			&patient.MedicalHistory,
+			&patient.FirstAppointmentID,
 			&patient.CreatedAt,
 			&patient.UpdatedAt,
 		)
@@ -119,7 +121,7 @@ func (r *PatientPostgresRepository) GetAll(ctx context.Context) ([]*entities.Pat
 // GetByEmail retrieves a patient by email
 func (r *PatientPostgresRepository) GetByEmail(ctx context.Context, email string) (*entities.Patient, error) {
 	query := `
-		SELECT id, first_name, last_name, email, phone, date_of_birth, medical_history, created_at, updated_at
+		SELECT id, first_name, last_name, email, phone, date_of_birth, medical_history, first_appointment_id, created_at, updated_at
 		FROM patients
 		WHERE email = $1`
 
@@ -132,6 +134,7 @@ func (r *PatientPostgresRepository) GetByEmail(ctx context.Context, email string
 		&patient.Phone,
 		&patient.DateOfBirth,
 		&patient.MedicalHistory,
+		&patient.FirstAppointmentID,
 		&patient.CreatedAt,
 		&patient.UpdatedAt,
 	)
@@ -217,11 +220,13 @@ func (r *PatientPostgresRepository) Exists(ctx context.Context, id uuid.UUID) (b
 // SearchPatients searches for patients by name, phone, or email within an organization
 func (r *PatientPostgresRepository) SearchPatients(ctx context.Context, orgID uuid.UUID, query string, limit int) ([]*entities.Patient, error) {
 	searchQuery := `
-		SELECT DISTINCT p.id, p.first_name, p.last_name, p.email, p.phone, p.date_of_birth, p.medical_history, p.created_at, p.updated_at
+		SELECT DISTINCT p.id, p.first_name, p.last_name, p.email, p.phone, p.date_of_birth, p.medical_history, p.first_appointment_id, p.created_at, p.updated_at
 		FROM patients p
 		INNER JOIN patient_organizations po ON p.id = po.patient_id
 		WHERE po.organization_id = $1
 		AND (
+			LOWER(COALESCE(p.first_name, '')) LIKE LOWER($2) OR
+			LOWER(COALESCE(p.last_name, '')) LIKE LOWER($2) OR
 			LOWER(CONCAT(p.first_name, ' ', COALESCE(p.last_name, ''))) LIKE LOWER($2) OR
 			LOWER(COALESCE(p.phone, '')) LIKE LOWER($2) OR
 			LOWER(COALESCE(p.email, '')) LIKE LOWER($2)
@@ -247,6 +252,7 @@ func (r *PatientPostgresRepository) SearchPatients(ctx context.Context, orgID uu
 			&patient.Phone,
 			&patient.DateOfBirth,
 			&patient.MedicalHistory,
+			&patient.FirstAppointmentID,
 			&patient.CreatedAt,
 			&patient.UpdatedAt,
 		)
@@ -333,6 +339,21 @@ func (r *PatientPostgresRepository) CreatePatientWithOrganization(ctx context.Co
 	// Commit transaction
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
+}
+
+// UpdateFirstAppointmentIfNil sets the patient's first_appointment_id if it's currently NULL
+func (r *PatientPostgresRepository) UpdateFirstAppointmentIfNil(ctx context.Context, patientID uuid.UUID, appointmentID uuid.UUID) error {
+	query := `
+		UPDATE patients
+		SET first_appointment_id = $1
+		WHERE id = $2 AND first_appointment_id IS NULL`
+
+	_, err := r.db.ExecContext(ctx, query, appointmentID, patientID)
+	if err != nil {
+		return fmt.Errorf("failed to update first_appointment_id: %w", err)
 	}
 
 	return nil

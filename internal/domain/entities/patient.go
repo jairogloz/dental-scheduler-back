@@ -8,16 +8,17 @@ import (
 
 // Patient represents a patient entity
 type Patient struct {
-	ID             uuid.UUID  `json:"id" db:"id"`
-	UserID         *uuid.UUID `json:"user_id,omitempty" db:"user_id"` // Links to auth.users(id)
-	FirstName      string     `json:"first_name" db:"first_name"`
-	LastName       *string    `json:"last_name,omitempty" db:"last_name"`
-	Email          *string    `json:"email,omitempty" db:"email"`
-	Phone          *string    `json:"phone,omitempty" db:"phone"`
-	DateOfBirth    *time.Time `json:"date_of_birth,omitempty" db:"date_of_birth"`
-	MedicalHistory *string    `json:"medical_history,omitempty" db:"medical_history"`
-	CreatedAt      time.Time  `json:"created_at" db:"created_at"`
-	UpdatedAt      time.Time  `json:"updated_at" db:"updated_at"`
+	ID                 uuid.UUID  `json:"id" db:"id"`
+	UserID             *uuid.UUID `json:"user_id,omitempty" db:"user_id"` // Links to auth.users(id)
+	FirstName          string     `json:"first_name" db:"first_name"`
+	LastName           *string    `json:"last_name,omitempty" db:"last_name"`
+	Email              *string    `json:"email,omitempty" db:"email"`
+	Phone              *string    `json:"phone,omitempty" db:"phone"`
+	DateOfBirth        *time.Time `json:"date_of_birth,omitempty" db:"date_of_birth"`
+	MedicalHistory     *string    `json:"medical_history,omitempty" db:"medical_history"`
+	FirstAppointmentID *uuid.UUID `json:"first_appointment_id,omitempty" db:"first_appointment_id"` // ID of patient's first appointment
+	CreatedAt          time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt          time.Time  `json:"updated_at" db:"updated_at"`
 }
 
 // Validate checks if the patient entity is valid

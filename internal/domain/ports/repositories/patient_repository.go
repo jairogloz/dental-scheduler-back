@@ -42,4 +42,7 @@ type PatientRepository interface {
 
 	// CreatePatientWithOrganization creates a patient and links to organization in a transaction
 	CreatePatientWithOrganization(ctx context.Context, patient *entities.Patient, orgID uuid.UUID) error
+
+	// UpdateFirstAppointmentIfNil sets the patient's first_appointment_id if it's currently NULL
+	UpdateFirstAppointmentIfNil(ctx context.Context, patientID uuid.UUID, appointmentID uuid.UUID) error
 }

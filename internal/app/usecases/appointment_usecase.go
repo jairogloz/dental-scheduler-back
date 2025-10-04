@@ -90,7 +90,13 @@ func (uc *AppointmentUseCase) CreateAppointment(ctx context.Context, orgID uuid.
 		fmt.Printf("Warning: failed to link patient to organization: %v\n", err)
 	}
 
-	// Fetch patient data to include patient name in response
+	// Try to set patient's first_appointment_id if NULL (best-effort, non-critical)
+	if err := uc.patientRepo.UpdateFirstAppointmentIfNil(ctx, req.PatientID, appointment.ID); err != nil {
+		// Log but don't fail - this is a non-critical operation
+		fmt.Printf("Warning: failed to set patient's first_appointment_id: %v\n", err)
+	}
+
+	// Fetch patient data to include patient name and is_first_visit flag in response
 	patient, err := uc.patientRepo.GetByID(ctx, req.PatientID)
 	if err != nil {
 		// If we can't get patient data, return response without patient name
@@ -105,7 +111,13 @@ func (uc *AppointmentUseCase) CreateAppointment(ctx context.Context, orgID uuid.
 		}
 	}
 
-	return dto.ToAppointmentResponseWithPatientName(appointment, patientName), nil
+	// Determine if this is the patient's first visit
+	isFirstVisit := false
+	if patient != nil && patient.FirstAppointmentID != nil && *patient.FirstAppointmentID == appointment.ID {
+		isFirstVisit = true
+	}
+
+	return dto.ToAppointmentResponseWithPatientNameAndFirstVisit(appointment, patientName, isFirstVisit), nil
 }
 
 // GetAppointmentByID retrieves an appointment by its ID
@@ -247,7 +259,13 @@ func (uc *AppointmentUseCase) UpdateAppointment(ctx context.Context, id uuid.UUI
 		}
 	}
 
-	return dto.ToAppointmentResponseWithPatientName(updated, patientName), nil
+	// Determine if this is the patient's first visit
+	isFirstVisit := false
+	if patient != nil && patient.FirstAppointmentID != nil && *patient.FirstAppointmentID == updated.ID {
+		isFirstVisit = true
+	}
+
+	return dto.ToAppointmentResponseWithPatientNameAndFirstVisit(updated, patientName, isFirstVisit), nil
 }
 
 // RescheduleAppointment reschedules an existing appointment

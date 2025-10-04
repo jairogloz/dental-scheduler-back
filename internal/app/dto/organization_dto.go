@@ -78,6 +78,7 @@ type DoctorDTO struct {
 // AppointmentCalendarDataDTO represents minimal appointment data for calendar view
 type AppointmentCalendarDataDTO struct {
 	ID            uuid.UUID `json:"id"`
+	PatientID     uuid.UUID `json:"patient_id"`
 	PatientName   string    `json:"patient_name"`
 	PatientPhone  *string   `json:"patient_phone,omitempty"`
 	DoctorID      uuid.UUID `json:"doctor_id"`
@@ -87,6 +88,7 @@ type AppointmentCalendarDataDTO struct {
 	EndTime       time.Time `json:"end_time"`
 	Status        string    `json:"status"`
 	TreatmentType *string   `json:"treatment_type,omitempty"`
+	IsFirstVisit  bool      `json:"is_first_visit"`
 }
 
 // ToOrganizationDTO converts an Organization entity to DTO
@@ -202,6 +204,7 @@ func ToAppointmentCalendarDataDTO(appt *repositories.AppointmentCalendarData) *A
 	}
 	return &AppointmentCalendarDataDTO{
 		ID:            appt.ID,
+		PatientID:     appt.PatientID,
 		PatientName:   appt.PatientName,
 		PatientPhone:  appt.PatientPhone,
 		DoctorID:      appt.DoctorID,
@@ -211,6 +214,7 @@ func ToAppointmentCalendarDataDTO(appt *repositories.AppointmentCalendarData) *A
 		EndTime:       appt.EndTime,
 		Status:        appt.Status,
 		TreatmentType: appt.TreatmentType,
+		IsFirstVisit:  appt.IsFirstVisit,
 	}
 }
 

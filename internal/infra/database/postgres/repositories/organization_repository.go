@@ -224,6 +224,7 @@ func (r *OrganizationPostgresRepository) getAppointmentsByOrganization(ctx conte
 	query := `
 		SELECT DISTINCT 
 			a.id, 
+			a.patient_id,
 			CONCAT(p.first_name, ' ', COALESCE(p.last_name, '')) as patient_name,
 			p.phone as patient_phone,
 			a.doctor_id,
@@ -232,7 +233,11 @@ func (r *OrganizationPostgresRepository) getAppointmentsByOrganization(ctx conte
 			a.start_time,
 			a.end_time,
 			a.status,
-			a.treatment_type
+			a.treatment_type,
+			CASE 
+				WHEN p.first_appointment_id = a.id THEN true
+				ELSE false
+			END as is_first_visit
 		FROM appointments a
 		INNER JOIN units u ON a.unit_id = u.id
 		INNER JOIN clinics c ON u.clinic_id = c.id
@@ -255,6 +260,7 @@ func (r *OrganizationPostgresRepository) getAppointmentsByOrganization(ctx conte
 		var appt repositories.AppointmentCalendarData
 		err := rows.Scan(
 			&appt.ID,
+			&appt.PatientID,
 			&appt.PatientName,
 			&appt.PatientPhone,
 			&appt.DoctorID,
@@ -264,6 +270,7 @@ func (r *OrganizationPostgresRepository) getAppointmentsByOrganization(ctx conte
 			&appt.EndTime,
 			&appt.Status,
 			&appt.TreatmentType,
+			&appt.IsFirstVisit,
 		)
 		if err != nil {
 			return nil, err
