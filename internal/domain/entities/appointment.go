@@ -15,6 +15,7 @@ const (
 	AppointmentStatusCompleted   AppointmentStatus = "completed"
 	AppointmentStatusCancelled   AppointmentStatus = "cancelled"
 	AppointmentStatusRescheduled AppointmentStatus = "rescheduled"
+	AppointmentStatusNoShow      AppointmentStatus = "no-show"
 )
 
 // Appointment represents an appointment entity
@@ -96,7 +97,12 @@ func (a *Appointment) IsRescheduled() bool {
 // IsValidStatus checks if the provided status is valid
 func IsValidAppointmentStatus(status AppointmentStatus) bool {
 	switch status {
-	case AppointmentStatusScheduled, AppointmentStatusCompleted, AppointmentStatusCancelled, AppointmentStatusRescheduled:
+	case AppointmentStatusScheduled,
+		AppointmentStatusConfirmed,
+		AppointmentStatusCompleted,
+		AppointmentStatusCancelled,
+		AppointmentStatusRescheduled,
+		AppointmentStatusNoShow:
 		return true
 	default:
 		return false
