@@ -25,7 +25,7 @@ func NewAppointmentPostgresRepository(db *sql.DB) repositories.AppointmentReposi
 // Create creates a new appointment
 func (r *AppointmentPostgresRepository) Create(ctx context.Context, appointment *entities.Appointment) error {
 	query := `
-		INSERT INTO appointments (id, patient_id, doctor_id, unit_id, treatment_type, status, start_time, end_time, notes, created_at, updated_at)
+		INSERT INTO appointments (id, patient_id, doctor_id, unit_id, service_id, status, start_time, end_time, notes, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
 
 	_, err := r.db.ExecContext(ctx, query,
@@ -33,7 +33,7 @@ func (r *AppointmentPostgresRepository) Create(ctx context.Context, appointment 
 		appointment.PatientID,
 		appointment.DoctorID,
 		appointment.UnitID,
-		appointment.TreatmentType,
+		appointment.ServiceID,
 		appointment.Status,
 		appointment.StartTime,
 		appointment.EndTime,
@@ -52,7 +52,7 @@ func (r *AppointmentPostgresRepository) Create(ctx context.Context, appointment 
 // GetByID retrieves an appointment by its ID
 func (r *AppointmentPostgresRepository) GetByID(ctx context.Context, id uuid.UUID) (*entities.Appointment, error) {
 	query := `
-		SELECT id, patient_id, doctor_id, unit_id, treatment_type, status, start_time, end_time, notes, created_at, updated_at
+		SELECT id, patient_id, doctor_id, unit_id, service_id, status, start_time, end_time, notes, created_at, updated_at
 		FROM appointments
 		WHERE id = $1`
 
@@ -63,7 +63,7 @@ func (r *AppointmentPostgresRepository) GetByID(ctx context.Context, id uuid.UUI
 		&appointment.PatientID,
 		&appointment.DoctorID,
 		&appointment.UnitID,
-		&appointment.TreatmentType,
+		&appointment.ServiceID,
 		&status,
 		&appointment.StartTime,
 		&appointment.EndTime,
@@ -86,7 +86,7 @@ func (r *AppointmentPostgresRepository) GetByID(ctx context.Context, id uuid.UUI
 // GetAll retrieves all appointments
 func (r *AppointmentPostgresRepository) GetAll(ctx context.Context) ([]*entities.Appointment, error) {
 	query := `
-		SELECT id, patient_id, doctor_id, unit_id, treatment_type, status, start_time, end_time, notes, created_at, updated_at
+		SELECT id, patient_id, doctor_id, unit_id, service_id, status, start_time, end_time, notes, created_at, updated_at
 		FROM appointments
 		ORDER BY start_time`
 
@@ -102,7 +102,7 @@ func (r *AppointmentPostgresRepository) GetAll(ctx context.Context) ([]*entities
 // GetByPatientID retrieves all appointments for a patient
 func (r *AppointmentPostgresRepository) GetByPatientID(ctx context.Context, patientID uuid.UUID) ([]*entities.Appointment, error) {
 	query := `
-		SELECT id, patient_id, doctor_id, unit_id, treatment_type, status, start_time, end_time, notes, created_at, updated_at
+		SELECT id, patient_id, doctor_id, unit_id, service_id, status, start_time, end_time, notes, created_at, updated_at
 		FROM appointments
 		WHERE patient_id = $1
 		ORDER BY start_time`
@@ -119,7 +119,7 @@ func (r *AppointmentPostgresRepository) GetByPatientID(ctx context.Context, pati
 // GetByDoctorID retrieves all appointments for a doctor
 func (r *AppointmentPostgresRepository) GetByDoctorID(ctx context.Context, doctorID uuid.UUID) ([]*entities.Appointment, error) {
 	query := `
-		SELECT id, patient_id, doctor_id, unit_id, treatment_type, status, start_time, end_time, notes, created_at, updated_at
+		SELECT id, patient_id, doctor_id, unit_id, service_id, status, start_time, end_time, notes, created_at, updated_at
 		FROM appointments
 		WHERE doctor_id = $1
 		ORDER BY start_time`
@@ -136,7 +136,7 @@ func (r *AppointmentPostgresRepository) GetByDoctorID(ctx context.Context, docto
 // GetByUnitID retrieves all appointments for a unit
 func (r *AppointmentPostgresRepository) GetByUnitID(ctx context.Context, unitID uuid.UUID) ([]*entities.Appointment, error) {
 	query := `
-		SELECT id, patient_id, doctor_id, unit_id, treatment_type, status, start_time, end_time, notes, created_at, updated_at
+		SELECT id, patient_id, doctor_id, unit_id, service_id, status, start_time, end_time, notes, created_at, updated_at
 		FROM appointments
 		WHERE unit_id = $1
 		ORDER BY start_time`
@@ -157,7 +157,7 @@ func (r *AppointmentPostgresRepository) GetByDoctorIDAndDate(ctx context.Context
 	endOfDay := startOfDay.Add(24 * time.Hour)
 
 	query := `
-		SELECT id, patient_id, doctor_id, unit_id, treatment_type, status, start_time, end_time, notes, created_at, updated_at
+		SELECT id, patient_id, doctor_id, unit_id, service_id, status, start_time, end_time, notes, created_at, updated_at
 		FROM appointments
 		WHERE doctor_id = $1 AND start_time >= $2 AND start_time < $3
 		ORDER BY start_time`
@@ -174,7 +174,7 @@ func (r *AppointmentPostgresRepository) GetByDoctorIDAndDate(ctx context.Context
 // GetUpcoming retrieves all upcoming appointments
 func (r *AppointmentPostgresRepository) GetUpcoming(ctx context.Context) ([]*entities.Appointment, error) {
 	query := `
-		SELECT id, patient_id, doctor_id, unit_id, treatment_type, status, start_time, end_time, notes, created_at, updated_at
+		SELECT id, patient_id, doctor_id, unit_id, service_id, status, start_time, end_time, notes, created_at, updated_at
 		FROM appointments
 		WHERE start_time > NOW() AND status = 'scheduled'
 		ORDER BY start_time`
@@ -192,7 +192,7 @@ func (r *AppointmentPostgresRepository) GetUpcoming(ctx context.Context) ([]*ent
 func (r *AppointmentPostgresRepository) Update(ctx context.Context, appointment *entities.Appointment) error {
 	query := `
 		UPDATE appointments
-		SET patient_id = $2, doctor_id = $3, unit_id = $4, treatment_type = $5, status = $6, start_time = $7, end_time = $8, notes = $9, updated_at = $10
+		SET patient_id = $2, doctor_id = $3, unit_id = $4, service_id = $5, status = $6, start_time = $7, end_time = $8, notes = $9, updated_at = $10
 		WHERE id = $1`
 
 	result, err := r.db.ExecContext(ctx, query,
@@ -200,7 +200,7 @@ func (r *AppointmentPostgresRepository) Update(ctx context.Context, appointment 
 		appointment.PatientID,
 		appointment.DoctorID,
 		appointment.UnitID,
-		appointment.TreatmentType,
+		appointment.ServiceID,
 		appointment.Status,
 		appointment.StartTime,
 		appointment.EndTime,
@@ -274,7 +274,7 @@ func (r *AppointmentPostgresRepository) CheckConflict(ctx context.Context, docto
 // GetConflictingAppointments returns appointments that conflict with the given time range
 func (r *AppointmentPostgresRepository) GetConflictingAppointments(ctx context.Context, doctorID, unitID uuid.UUID, startTime, endTime time.Time, excludeAppointmentID *uuid.UUID) ([]*entities.Appointment, error) {
 	query := `
-		SELECT id, patient_id, doctor_id, unit_id, treatment_type, status, start_time, end_time, notes, created_at, updated_at
+		SELECT id, patient_id, doctor_id, unit_id, service_id, status, start_time, end_time, notes, created_at, updated_at
 		FROM appointments
 		WHERE status = 'scheduled'
 		  AND (doctor_id = $1 OR unit_id = $2)
@@ -310,7 +310,7 @@ func (r *AppointmentPostgresRepository) scanAppointments(rows *sql.Rows) ([]*ent
 			&appointment.PatientID,
 			&appointment.DoctorID,
 			&appointment.UnitID,
-			&appointment.TreatmentType,
+			&appointment.ServiceID,
 			&status,
 			&appointment.StartTime,
 			&appointment.EndTime,
@@ -341,6 +341,7 @@ func (r *AppointmentPostgresRepository) GetByOrganizationAndDateRange(ctx contex
 		INNER JOIN clinics c ON u.clinic_id = c.id
 		INNER JOIN doctors d ON a.doctor_id = d.id
 		INNER JOIN patients p ON a.patient_id = p.id
+		LEFT JOIN services s ON a.service_id = s.id
 		WHERE c.organization_id = $1 
 		AND a.start_time >= $2 
 		AND a.start_time < $3`
@@ -381,8 +382,9 @@ func (r *AppointmentPostgresRepository) GetByOrganizationAndDateRange(ctx contex
 	// Main query with all fields
 	selectFields := `
 		SELECT 
-			a.id, a.patient_id, a.doctor_id, a.unit_id, a.treatment_type, a.status, 
+			a.id, a.patient_id, a.doctor_id, a.unit_id, a.service_id, a.status, 
 			a.start_time, a.end_time, a.notes, a.created_at, a.updated_at,
+			s.name as service_name,
 			p.id, p.first_name, p.last_name, p.phone, p.email, p.first_appointment_id, p.created_at, p.updated_at,
 			d.id, d.organization_id, d.user_id, d.name, d.specialty, d.email, d.phone, d.is_active, d.created_at, d.updated_at,
 			u.id, u.name, u.description, u.clinic_id, u.created_at, u.updated_at,
@@ -415,6 +417,7 @@ func (r *AppointmentPostgresRepository) GetByOrganizationAndDateRange(ctx contex
 		var doctor entities.Doctor
 		var unit entities.Unit
 		var clinic entities.Clinic
+		var serviceName sql.NullString
 		var status string
 
 		err := rows.Scan(
@@ -423,13 +426,15 @@ func (r *AppointmentPostgresRepository) GetByOrganizationAndDateRange(ctx contex
 			&appointment.PatientID,
 			&appointment.DoctorID,
 			&appointment.UnitID,
-			&appointment.TreatmentType,
+			&appointment.ServiceID,
 			&status,
 			&appointment.StartTime,
 			&appointment.EndTime,
 			&appointment.Notes,
 			&appointment.CreatedAt,
 			&appointment.UpdatedAt,
+			// Service name
+			&serviceName,
 			// Patient fields
 			&patient.ID,
 			&patient.FirstName,
@@ -474,12 +479,19 @@ func (r *AppointmentPostgresRepository) GetByOrganizationAndDateRange(ctx contex
 		// Set appointment status
 		appointment.Status = entities.AppointmentStatus(status)
 
+		// Convert serviceName to pointer
+		var serviceNamePtr *string
+		if serviceName.Valid {
+			serviceNamePtr = &serviceName.String
+		}
+
 		appointmentWithDetails := &repositories.AppointmentWithDetails{
 			Appointment: &appointment,
 			Patient:     &patient,
 			Doctor:      &doctor,
 			Unit:        &unit,
 			Clinic:      &clinic,
+			ServiceName: serviceNamePtr,
 		}
 
 		appointments = append(appointments, appointmentWithDetails)

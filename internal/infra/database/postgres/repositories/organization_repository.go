@@ -240,7 +240,8 @@ func (r *OrganizationPostgresRepository) getAppointmentsByOrganization(ctx conte
 			a.start_time,
 			a.end_time,
 			a.status,
-			a.treatment_type,
+			a.service_id,
+			s.name as service_name,
 			CASE 
 				WHEN p.first_appointment_id = a.id THEN true
 				ELSE false
@@ -249,6 +250,7 @@ func (r *OrganizationPostgresRepository) getAppointmentsByOrganization(ctx conte
 		INNER JOIN units u ON a.unit_id = u.id
 		INNER JOIN clinics c ON u.clinic_id = c.id
 		INNER JOIN patients p ON a.patient_id = p.id
+		LEFT JOIN services s ON a.service_id = s.id
 		WHERE c.organization_id = $1
 		AND a.start_time >= $2
 		AND a.start_time <= $3
@@ -276,7 +278,8 @@ func (r *OrganizationPostgresRepository) getAppointmentsByOrganization(ctx conte
 			&appt.StartTime,
 			&appt.EndTime,
 			&appt.Status,
-			&appt.TreatmentType,
+			&appt.ServiceID,
+			&appt.ServiceName,
 			&appt.IsFirstVisit,
 		)
 		if err != nil {

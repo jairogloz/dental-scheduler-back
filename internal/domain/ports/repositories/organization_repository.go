@@ -21,18 +21,19 @@ type OrganizationData struct {
 
 // AppointmentCalendarData represents minimal appointment data for calendar view
 type AppointmentCalendarData struct {
-	ID            uuid.UUID `json:"id"`
-	PatientID     uuid.UUID `json:"patient_id"`
-	PatientName   string    `json:"patient_name"`
-	PatientPhone  *string   `json:"patient_phone"`
-	DoctorID      uuid.UUID `json:"doctor_id"`
-	ClinicID      uuid.UUID `json:"clinic_id"`
-	UnitID        uuid.UUID `json:"unit_id"`
-	StartTime     time.Time `json:"start_time"`
-	EndTime       time.Time `json:"end_time"`
-	Status        string    `json:"status"`
-	TreatmentType *string   `json:"treatment_type"`
-	IsFirstVisit  bool      `json:"is_first_visit"`
+	ID           uuid.UUID `json:"id"`
+	PatientID    uuid.UUID `json:"patient_id"`
+	PatientName  string    `json:"patient_name"`
+	PatientPhone *string   `json:"patient_phone"`
+	DoctorID     uuid.UUID `json:"doctor_id"`
+	ClinicID     uuid.UUID `json:"clinic_id"`
+	UnitID       uuid.UUID `json:"unit_id"`
+	StartTime    time.Time `json:"start_time"`
+	EndTime      time.Time `json:"end_time"`
+	Status       string    `json:"status"`
+	ServiceID    *string   `json:"service_id"`
+	ServiceName  *string   `json:"service_name"`
+	IsFirstVisit bool      `json:"is_first_visit"`
 }
 
 // OrganizationRepository defines the interface for organization data operations

@@ -10,57 +10,59 @@ import (
 
 // CreateAppointmentRequest represents the request to create an appointment
 type CreateAppointmentRequest struct {
-	PatientID     uuid.UUID `json:"patient_id" binding:"required"`
-	DoctorID      uuid.UUID `json:"doctor_id" binding:"required"`
-	UnitID        uuid.UUID `json:"unit_id" binding:"required"`
-	TreatmentType *string   `json:"treatment_type,omitempty"`
-	StartTime     time.Time `json:"start_time" binding:"required"`
-	EndTime       time.Time `json:"end_time" binding:"required"`
-	Notes         *string   `json:"notes,omitempty"`
+	PatientID uuid.UUID `json:"patient_id" binding:"required"`
+	DoctorID  uuid.UUID `json:"doctor_id" binding:"required"`
+	UnitID    uuid.UUID `json:"unit_id" binding:"required"`
+	ServiceID string    `json:"service_id" binding:"required"`
+	StartTime time.Time `json:"start_time" binding:"required"`
+	EndTime   time.Time `json:"end_time" binding:"required"`
+	Notes     *string   `json:"notes,omitempty"`
 }
 
 // UpdateAppointmentRequest represents the request to update an appointment (partial updates)
 type UpdateAppointmentRequest struct {
-	PatientID     *uuid.UUID                  `json:"patient_id,omitempty"`
-	DoctorID      *uuid.UUID                  `json:"doctor_id,omitempty"`
-	UnitID        *uuid.UUID                  `json:"unit_id,omitempty"`
-	TreatmentType *string                     `json:"treatment_type,omitempty"`
-	Status        *entities.AppointmentStatus `json:"status,omitempty"`
-	StartTime     *time.Time                  `json:"start_time,omitempty"`
-	EndTime       *time.Time                  `json:"end_time,omitempty"`
-	Notes         *string                     `json:"notes,omitempty"`
+	PatientID *uuid.UUID                  `json:"patient_id,omitempty"`
+	DoctorID  *uuid.UUID                  `json:"doctor_id,omitempty"`
+	UnitID    *uuid.UUID                  `json:"unit_id,omitempty"`
+	ServiceID *string                     `json:"service_id,omitempty"`
+	Status    *entities.AppointmentStatus `json:"status,omitempty"`
+	StartTime *time.Time                  `json:"start_time,omitempty"`
+	EndTime   *time.Time                  `json:"end_time,omitempty"`
+	Notes     *string                     `json:"notes,omitempty"`
 }
 
 // AppointmentResponse represents the response for an appointment
 type AppointmentResponse struct {
-	ID            uuid.UUID                  `json:"id"`
-	PatientID     uuid.UUID                  `json:"patient_id"`
-	PatientName   string                     `json:"patient_name"`
-	DoctorID      uuid.UUID                  `json:"doctor_id"`
-	UnitID        uuid.UUID                  `json:"unit_id"`
-	TreatmentType *string                    `json:"treatment_type,omitempty"`
-	Status        entities.AppointmentStatus `json:"status"`
-	StartTime     time.Time                  `json:"start_time"`
-	EndTime       time.Time                  `json:"end_time"`
-	Notes         *string                    `json:"notes,omitempty"`
-	IsFirstVisit  bool                       `json:"is_first_visit"`
-	CreatedAt     time.Time                  `json:"created_at"`
-	UpdatedAt     time.Time                  `json:"updated_at"`
+	ID           uuid.UUID                  `json:"id"`
+	PatientID    uuid.UUID                  `json:"patient_id"`
+	PatientName  string                     `json:"patient_name"`
+	DoctorID     uuid.UUID                  `json:"doctor_id"`
+	UnitID       uuid.UUID                  `json:"unit_id"`
+	ServiceID    *string                    `json:"service_id,omitempty"`
+	ServiceName  *string                    `json:"service_name,omitempty"`
+	Status       entities.AppointmentStatus `json:"status"`
+	StartTime    time.Time                  `json:"start_time"`
+	EndTime      time.Time                  `json:"end_time"`
+	Notes        *string                    `json:"notes,omitempty"`
+	IsFirstVisit bool                       `json:"is_first_visit"`
+	CreatedAt    time.Time                  `json:"created_at"`
+	UpdatedAt    time.Time                  `json:"updated_at"`
 }
 
 // AppointmentWithDetailsResponse represents the response for an appointment with related entity details
 type AppointmentWithDetailsResponse struct {
-	ID            uuid.UUID                  `json:"id"`
-	Patient       *PatientResponse           `json:"patient"`
-	Doctor        *DoctorResponse            `json:"doctor"`
-	Unit          *UnitResponse              `json:"unit"`
-	TreatmentType *string                    `json:"treatment_type,omitempty"`
-	Status        entities.AppointmentStatus `json:"status"`
-	StartTime     time.Time                  `json:"start_time"`
-	EndTime       time.Time                  `json:"end_time"`
-	Notes         *string                    `json:"notes,omitempty"`
-	CreatedAt     time.Time                  `json:"created_at"`
-	UpdatedAt     time.Time                  `json:"updated_at"`
+	ID          uuid.UUID                  `json:"id"`
+	Patient     *PatientResponse           `json:"patient"`
+	Doctor      *DoctorResponse            `json:"doctor"`
+	Unit        *UnitResponse              `json:"unit"`
+	ServiceID   *string                    `json:"service_id,omitempty"`
+	ServiceName *string                    `json:"service_name,omitempty"`
+	Status      entities.AppointmentStatus `json:"status"`
+	StartTime   time.Time                  `json:"start_time"`
+	EndTime     time.Time                  `json:"end_time"`
+	Notes       *string                    `json:"notes,omitempty"`
+	CreatedAt   time.Time                  `json:"created_at"`
+	UpdatedAt   time.Time                  `json:"updated_at"`
 }
 
 // RescheduleAppointmentRequest represents the request to reschedule an appointment
@@ -83,24 +85,25 @@ type GetAppointmentsRequest struct {
 
 // AppointmentListResponse represents an appointment with all related details for listing
 type AppointmentListResponse struct {
-	ID            string    `json:"id"`
-	PatientID     string    `json:"patient_id"`
-	PatientName   string    `json:"patient_name"`
-	PatientPhone  string    `json:"patient_phone,omitempty"`
-	DoctorID      string    `json:"doctor_id"`
-	DoctorName    string    `json:"doctor_name"`
-	ClinicID      string    `json:"clinic_id"`
-	ClinicName    string    `json:"clinic_name"`
-	UnitID        *string   `json:"unit_id,omitempty"`
-	UnitName      *string   `json:"unit_name,omitempty"`
-	StartTime     time.Time `json:"start_time"`
-	EndTime       time.Time `json:"end_time"`
-	Status        string    `json:"status"`
-	TreatmentType string    `json:"treatment_type,omitempty"`
-	Notes         string    `json:"notes,omitempty"`
-	IsFirstVisit  bool      `json:"is_first_visit"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ID           string    `json:"id"`
+	PatientID    string    `json:"patient_id"`
+	PatientName  string    `json:"patient_name"`
+	PatientPhone string    `json:"patient_phone,omitempty"`
+	DoctorID     string    `json:"doctor_id"`
+	DoctorName   string    `json:"doctor_name"`
+	ClinicID     string    `json:"clinic_id"`
+	ClinicName   string    `json:"clinic_name"`
+	UnitID       *string   `json:"unit_id,omitempty"`
+	UnitName     *string   `json:"unit_name,omitempty"`
+	StartTime    time.Time `json:"start_time"`
+	EndTime      time.Time `json:"end_time"`
+	Status       string    `json:"status"`
+	ServiceID    string    `json:"service_id,omitempty"`
+	ServiceName  string    `json:"service_name,omitempty"`
+	Notes        string    `json:"notes,omitempty"`
+	IsFirstVisit bool      `json:"is_first_visit"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 // AppointmentSummary provides summary statistics for the appointments
@@ -134,75 +137,79 @@ type PaginationInfo struct {
 
 // ToEntity converts CreateAppointmentRequest to entities.Appointment
 func (req *CreateAppointmentRequest) ToEntity() *entities.Appointment {
+	serviceID := req.ServiceID
 	return &entities.Appointment{
-		ID:            uuid.New(),
-		PatientID:     req.PatientID,
-		DoctorID:      req.DoctorID,
-		UnitID:        req.UnitID,
-		TreatmentType: req.TreatmentType,
-		Status:        entities.AppointmentStatusScheduled,
-		StartTime:     req.StartTime,
-		EndTime:       req.EndTime,
-		Notes:         req.Notes,
-		CreatedAt:     time.Now(),
-		UpdatedAt:     time.Now(),
+		ID:        uuid.New(),
+		PatientID: req.PatientID,
+		DoctorID:  req.DoctorID,
+		UnitID:    req.UnitID,
+		ServiceID: &serviceID,
+		Status:    entities.AppointmentStatusScheduled,
+		StartTime: req.StartTime,
+		EndTime:   req.EndTime,
+		Notes:     req.Notes,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 }
 
 // ToAppointmentResponse converts entities.Appointment to AppointmentResponse
 func ToAppointmentResponse(a *entities.Appointment) *AppointmentResponse {
 	return &AppointmentResponse{
-		ID:            a.ID,
-		PatientID:     a.PatientID,
-		PatientName:   "", // Will be empty when patient name is not available
-		DoctorID:      a.DoctorID,
-		UnitID:        a.UnitID,
-		TreatmentType: a.TreatmentType,
-		Status:        a.Status,
-		StartTime:     a.StartTime,
-		EndTime:       a.EndTime,
-		Notes:         a.Notes,
-		IsFirstVisit:  false, // Default to false when patient info not available
-		CreatedAt:     a.CreatedAt,
-		UpdatedAt:     a.UpdatedAt,
+		ID:           a.ID,
+		PatientID:    a.PatientID,
+		PatientName:  "", // Will be empty when patient name is not available
+		DoctorID:     a.DoctorID,
+		UnitID:       a.UnitID,
+		ServiceID:    a.ServiceID,
+		ServiceName:  nil, // Will be nil when service name is not available
+		Status:       a.Status,
+		StartTime:    a.StartTime,
+		EndTime:      a.EndTime,
+		Notes:        a.Notes,
+		IsFirstVisit: false, // Default to false when patient info not available
+		CreatedAt:    a.CreatedAt,
+		UpdatedAt:    a.UpdatedAt,
 	}
 }
 
 // ToAppointmentResponseWithPatientName converts entities.Appointment to AppointmentResponse with patient name
 func ToAppointmentResponseWithPatientName(a *entities.Appointment, patientName string) *AppointmentResponse {
 	return &AppointmentResponse{
-		ID:            a.ID,
-		PatientID:     a.PatientID,
-		PatientName:   patientName,
-		DoctorID:      a.DoctorID,
-		UnitID:        a.UnitID,
-		TreatmentType: a.TreatmentType,
-		Status:        a.Status,
-		StartTime:     a.StartTime,
-		EndTime:       a.EndTime,
-		Notes:         a.Notes,
-		IsFirstVisit:  false, // Default to false, use WithPatientNameAndFirstVisit for accurate flag
-		CreatedAt:     a.CreatedAt,
-		UpdatedAt:     a.UpdatedAt,
+		ID:           a.ID,
+		PatientID:    a.PatientID,
+		PatientName:  patientName,
+		DoctorID:     a.DoctorID,
+		UnitID:       a.UnitID,
+		ServiceID:    a.ServiceID,
+		ServiceName:  nil, // Will be nil when service name is not available
+		Status:       a.Status,
+		StartTime:    a.StartTime,
+		EndTime:      a.EndTime,
+		Notes:        a.Notes,
+		IsFirstVisit: false, // Default to false, use WithPatientNameAndFirstVisit for accurate flag
+		CreatedAt:    a.CreatedAt,
+		UpdatedAt:    a.UpdatedAt,
 	}
 }
 
 // ToAppointmentResponseWithPatientNameAndFirstVisit converts entities.Appointment to AppointmentResponse with all patient details
 func ToAppointmentResponseWithPatientNameAndFirstVisit(a *entities.Appointment, patientName string, isFirstVisit bool) *AppointmentResponse {
 	return &AppointmentResponse{
-		ID:            a.ID,
-		PatientID:     a.PatientID,
-		PatientName:   patientName,
-		DoctorID:      a.DoctorID,
-		UnitID:        a.UnitID,
-		TreatmentType: a.TreatmentType,
-		Status:        a.Status,
-		StartTime:     a.StartTime,
-		EndTime:       a.EndTime,
-		Notes:         a.Notes,
-		IsFirstVisit:  isFirstVisit,
-		CreatedAt:     a.CreatedAt,
-		UpdatedAt:     a.UpdatedAt,
+		ID:           a.ID,
+		PatientID:    a.PatientID,
+		PatientName:  patientName,
+		DoctorID:     a.DoctorID,
+		UnitID:       a.UnitID,
+		ServiceID:    a.ServiceID,
+		ServiceName:  nil, // Will be nil when service name is not available
+		Status:       a.Status,
+		StartTime:    a.StartTime,
+		EndTime:      a.EndTime,
+		Notes:        a.Notes,
+		IsFirstVisit: isFirstVisit,
+		CreatedAt:    a.CreatedAt,
+		UpdatedAt:    a.UpdatedAt,
 	}
 }
 
@@ -218,8 +225,8 @@ func (req *UpdateAppointmentRequest) ToEntityUpdate(existing *entities.Appointme
 	if req.UnitID != nil {
 		existing.UnitID = *req.UnitID
 	}
-	if req.TreatmentType != nil {
-		existing.TreatmentType = req.TreatmentType
+	if req.ServiceID != nil {
+		existing.ServiceID = req.ServiceID
 	}
 	if req.Status != nil {
 		existing.Status = *req.Status

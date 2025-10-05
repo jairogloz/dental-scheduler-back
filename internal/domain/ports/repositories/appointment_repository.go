@@ -25,6 +25,7 @@ type AppointmentWithDetails struct {
 	Doctor      *entities.Doctor
 	Unit        *entities.Unit
 	Clinic      *entities.Clinic
+	ServiceName *string
 }
 
 // AppointmentRepository defines the interface for appointment data operations

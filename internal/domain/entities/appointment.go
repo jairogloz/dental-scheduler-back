@@ -20,17 +20,17 @@ const (
 
 // Appointment represents an appointment entity
 type Appointment struct {
-	ID            uuid.UUID         `json:"id" db:"id"`
-	PatientID     uuid.UUID         `json:"patient_id" db:"patient_id"`
-	DoctorID      uuid.UUID         `json:"doctor_id" db:"doctor_id"`
-	UnitID        uuid.UUID         `json:"unit_id" db:"unit_id"`
-	TreatmentType *string           `json:"treatment_type,omitempty" db:"treatment_type"`
-	Status        AppointmentStatus `json:"status" db:"status"`
-	StartTime     time.Time         `json:"start_time" db:"start_time"`
-	EndTime       time.Time         `json:"end_time" db:"end_time"`
-	Notes         *string           `json:"notes,omitempty" db:"notes"`
-	CreatedAt     time.Time         `json:"created_at" db:"created_at"`
-	UpdatedAt     time.Time         `json:"updated_at" db:"updated_at"`
+	ID        uuid.UUID         `json:"id" db:"id"`
+	PatientID uuid.UUID         `json:"patient_id" db:"patient_id"`
+	DoctorID  uuid.UUID         `json:"doctor_id" db:"doctor_id"`
+	UnitID    uuid.UUID         `json:"unit_id" db:"unit_id"`
+	ServiceID *string           `json:"service_id,omitempty" db:"service_id"`
+	Status    AppointmentStatus `json:"status" db:"status"`
+	StartTime time.Time         `json:"start_time" db:"start_time"`
+	EndTime   time.Time         `json:"end_time" db:"end_time"`
+	Notes     *string           `json:"notes,omitempty" db:"notes"`
+	CreatedAt time.Time         `json:"created_at" db:"created_at"`
+	UpdatedAt time.Time         `json:"updated_at" db:"updated_at"`
 }
 
 // Validate checks if the appointment entity is valid

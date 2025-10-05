@@ -78,18 +78,19 @@ type DoctorDTO struct {
 
 // AppointmentCalendarDataDTO represents minimal appointment data for calendar view
 type AppointmentCalendarDataDTO struct {
-	ID            uuid.UUID `json:"id"`
-	PatientID     uuid.UUID `json:"patient_id"`
-	PatientName   string    `json:"patient_name"`
-	PatientPhone  *string   `json:"patient_phone,omitempty"`
-	DoctorID      uuid.UUID `json:"doctor_id"`
-	ClinicID      uuid.UUID `json:"clinic_id"`
-	UnitID        uuid.UUID `json:"unit_id"`
-	StartTime     time.Time `json:"start_time"`
-	EndTime       time.Time `json:"end_time"`
-	Status        string    `json:"status"`
-	TreatmentType *string   `json:"treatment_type,omitempty"`
-	IsFirstVisit  bool      `json:"is_first_visit"`
+	ID           uuid.UUID `json:"id"`
+	PatientID    uuid.UUID `json:"patient_id"`
+	PatientName  string    `json:"patient_name"`
+	PatientPhone *string   `json:"patient_phone,omitempty"`
+	DoctorID     uuid.UUID `json:"doctor_id"`
+	ClinicID     uuid.UUID `json:"clinic_id"`
+	UnitID       uuid.UUID `json:"unit_id"`
+	StartTime    time.Time `json:"start_time"`
+	EndTime      time.Time `json:"end_time"`
+	Status       string    `json:"status"`
+	ServiceID    *string   `json:"service_id,omitempty"`
+	ServiceName  *string   `json:"service_name,omitempty"`
+	IsFirstVisit bool      `json:"is_first_visit"`
 }
 
 // ServiceDTO represents service data in API responses
@@ -211,18 +212,19 @@ func ToAppointmentCalendarDataDTO(appt *repositories.AppointmentCalendarData) *A
 		return nil
 	}
 	return &AppointmentCalendarDataDTO{
-		ID:            appt.ID,
-		PatientID:     appt.PatientID,
-		PatientName:   appt.PatientName,
-		PatientPhone:  appt.PatientPhone,
-		DoctorID:      appt.DoctorID,
-		ClinicID:      appt.ClinicID,
-		UnitID:        appt.UnitID,
-		StartTime:     appt.StartTime,
-		EndTime:       appt.EndTime,
-		Status:        appt.Status,
-		TreatmentType: appt.TreatmentType,
-		IsFirstVisit:  appt.IsFirstVisit,
+		ID:           appt.ID,
+		PatientID:    appt.PatientID,
+		PatientName:  appt.PatientName,
+		PatientPhone: appt.PatientPhone,
+		DoctorID:     appt.DoctorID,
+		ClinicID:     appt.ClinicID,
+		UnitID:       appt.UnitID,
+		StartTime:    appt.StartTime,
+		EndTime:      appt.EndTime,
+		Status:       appt.Status,
+		ServiceID:    appt.ServiceID,
+		ServiceName:  appt.ServiceName,
+		IsFirstVisit: appt.IsFirstVisit,
 	}
 }
 
