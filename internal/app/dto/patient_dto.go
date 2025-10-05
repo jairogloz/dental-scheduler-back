@@ -39,8 +39,9 @@ func (req *CreatePatientWithOrgRequest) GetOrganizationID() (*uuid.UUID, error) 
 }
 
 // UpdatePatientRequest represents the request to update a patient
+// All fields are optional for partial updates
 type UpdatePatientRequest struct {
-	FirstName      string     `json:"first_name" binding:"required"`
+	FirstName      *string    `json:"first_name,omitempty"`
 	LastName       *string    `json:"last_name,omitempty"`
 	Email          *string    `json:"email,omitempty"`
 	Phone          *string    `json:"phone,omitempty"`
@@ -92,13 +93,60 @@ func ToPatientResponse(p *entities.Patient) *PatientResponse {
 }
 
 // ToEntityUpdate converts UpdatePatientRequest to updated entities.Patient
+// Only updates fields that are present in the request
+// If a field is an empty string, sets it to nil
 func (req *UpdatePatientRequest) ToEntityUpdate(existing *entities.Patient) *entities.Patient {
-	existing.FirstName = req.FirstName
-	existing.LastName = req.LastName
-	existing.Email = req.Email
-	existing.Phone = req.Phone
-	existing.DateOfBirth = req.DateOfBirth
-	existing.MedicalHistory = req.MedicalHistory
+	// Update FirstName if provided
+	if req.FirstName != nil {
+		if *req.FirstName == "" {
+			// Empty string not allowed for FirstName, keep existing
+			// FirstName is required field
+		} else {
+			existing.FirstName = *req.FirstName
+		}
+	}
+
+	// Update LastName if provided
+	if req.LastName != nil {
+		if *req.LastName == "" {
+			existing.LastName = nil // Empty string -> set to null
+		} else {
+			existing.LastName = req.LastName
+		}
+	}
+
+	// Update Email if provided
+	if req.Email != nil {
+		if *req.Email == "" {
+			existing.Email = nil // Empty string -> set to null
+		} else {
+			existing.Email = req.Email
+		}
+	}
+
+	// Update Phone if provided
+	if req.Phone != nil {
+		if *req.Phone == "" {
+			existing.Phone = nil // Empty string -> set to null
+		} else {
+			existing.Phone = req.Phone
+		}
+	}
+
+	// Update DateOfBirth if provided
+	if req.DateOfBirth != nil {
+		existing.DateOfBirth = req.DateOfBirth
+	}
+
+	// Update MedicalHistory if provided
+	if req.MedicalHistory != nil {
+		if *req.MedicalHistory == "" {
+			existing.MedicalHistory = nil // Empty string -> set to null
+		} else {
+			existing.MedicalHistory = req.MedicalHistory
+		}
+	}
+
 	existing.UpdatedAt = time.Now()
 	return existing
 }

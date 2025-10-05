@@ -69,6 +69,7 @@ func SetupRoutes(
 			{
 				patients.GET("/search", patientHandler.SearchPatients) // Patient search for autocomplete
 				patients.POST("", patientHandler.CreatePatient)        // Create patient with optional organization link
+				patients.PATCH("/:id", patientHandler.UpdatePatient)   // Update patient
 				patients.GET("", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
 				patients.GET("/:id", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
 				patients.PUT("/:id", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })

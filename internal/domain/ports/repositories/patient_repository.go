@@ -45,4 +45,7 @@ type PatientRepository interface {
 
 	// UpdateFirstAppointmentIfNil sets the patient's first_appointment_id if it's currently NULL
 	UpdateFirstAppointmentIfNil(ctx context.Context, patientID uuid.UUID, appointmentID uuid.UUID) error
+
+	// PatientBelongsToOrganization checks if a patient belongs to an organization
+	PatientBelongsToOrganization(ctx context.Context, patientID, orgID uuid.UUID) (bool, error)
 }

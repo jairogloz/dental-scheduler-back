@@ -358,3 +358,21 @@ func (r *PatientPostgresRepository) UpdateFirstAppointmentIfNil(ctx context.Cont
 
 	return nil
 }
+
+// PatientBelongsToOrganization checks if a patient belongs to an organization
+func (r *PatientPostgresRepository) PatientBelongsToOrganization(ctx context.Context, patientID, orgID uuid.UUID) (bool, error) {
+	query := `
+		SELECT EXISTS (
+			SELECT 1
+			FROM patient_organizations
+			WHERE patient_id = $1 AND organization_id = $2
+		)`
+
+	var exists bool
+	err := r.db.QueryRowContext(ctx, query, patientID, orgID).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("failed to check patient-organization relationship: %w", err)
+	}
+
+	return exists, nil
+}

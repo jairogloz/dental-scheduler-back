@@ -89,3 +89,99 @@ func (h *PatientHandler) SearchPatients(c *gin.Context) {
 		"data":    result,
 	})
 }
+
+// UpdatePatient handles PATCH /patients/:id
+func (h *PatientHandler) UpdatePatient(c *gin.Context) {
+	// Get patient ID from URL parameter
+	patientIDStr := c.Param("id")
+	patientID, err := uuid.Parse(patientIDStr)
+	if err != nil {
+		h.logger.Logger.WithError(err).Warn("Invalid patient ID format")
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "INVALID_ID",
+				"message": "Invalid patient ID format",
+			},
+		})
+		return
+	}
+
+	// Get organization ID from context (set by auth middleware)
+	orgID, exists := middleware.GetOrganizationIDFromContext(c)
+	if !exists {
+		h.logger.Logger.Error("Organization ID not found in context")
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "UNAUTHORIZED",
+				"message": "Organization context required",
+			},
+		})
+		return
+	}
+
+	orgUUID, err := uuid.Parse(orgID)
+	if err != nil {
+		h.logger.Logger.Error("Invalid organization ID format in context")
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "INVALID_CONTEXT",
+				"message": "Invalid organization context",
+			},
+		})
+		return
+	}
+
+	// Bind request body
+	var req dto.UpdatePatientRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Logger.WithError(err).Warn("Invalid request body for UpdatePatient")
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "INVALID_REQUEST",
+				"message": err.Error(),
+			},
+		})
+		return
+	}
+
+	h.logger.Logger.WithFields(map[string]interface{}{
+		"patient_id":      patientID,
+		"organization_id": orgUUID,
+	}).Info("Updating patient")
+
+	// Call use case
+	result, err := h.patientUseCase.UpdatePatient(c.Request.Context(), patientID, orgUUID, &req)
+	if err != nil {
+		h.logger.Logger.WithError(err).Error("Failed to update patient")
+
+		// Check for specific error types
+		switch err.Error() {
+		case "patient not found":
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"error": gin.H{
+					"code":    "PATIENT_NOT_FOUND",
+					"message": "Patient not found",
+				},
+			})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"error": gin.H{
+					"code":    "UPDATE_FAILED",
+					"message": "Failed to update patient",
+				},
+			})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    result,
+	})
+}

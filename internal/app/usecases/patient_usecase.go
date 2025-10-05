@@ -109,7 +109,7 @@ func (uc *PatientUseCase) GetAllPatients(ctx context.Context) ([]*dto.PatientRes
 }
 
 // UpdatePatient updates an existing patient
-func (uc *PatientUseCase) UpdatePatient(ctx context.Context, id uuid.UUID, req *dto.UpdatePatientRequest) (*dto.PatientResponse, error) {
+func (uc *PatientUseCase) UpdatePatient(ctx context.Context, id uuid.UUID, orgID uuid.UUID, req *dto.UpdatePatientRequest) (*dto.PatientResponse, error) {
 	existing, err := uc.patientRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -117,6 +117,15 @@ func (uc *PatientUseCase) UpdatePatient(ctx context.Context, id uuid.UUID, req *
 
 	if existing == nil {
 		return nil, entities.ErrPatientNotFound
+	}
+
+	// Verify patient belongs to the organization
+	belongs, err := uc.patientRepo.PatientBelongsToOrganization(ctx, id, orgID)
+	if err != nil {
+		return nil, err
+	}
+	if !belongs {
+		return nil, entities.ErrPatientNotFound // Return not found to avoid leaking patient existence
 	}
 
 	updated := req.ToEntityUpdate(existing)
