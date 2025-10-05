@@ -23,6 +23,7 @@ type OrganizationDataResponse struct {
 	Units        []*UnitDTO                    `json:"units"`
 	Doctors      []*DoctorDTO                  `json:"doctors"`
 	Appointments []*AppointmentCalendarDataDTO `json:"appointments"`
+	Services     []*ServiceDTO                 `json:"services"`
 }
 
 // OrganizationDTO represents organization data in API responses
@@ -89,6 +90,13 @@ type AppointmentCalendarDataDTO struct {
 	Status        string    `json:"status"`
 	TreatmentType *string   `json:"treatment_type,omitempty"`
 	IsFirstVisit  bool      `json:"is_first_visit"`
+}
+
+// ServiceDTO represents service data in API responses
+type ServiceDTO struct {
+	ID        string   `json:"id"`
+	Name      string   `json:"name"`
+	BasePrice *float64 `json:"base_price,omitempty"`
 }
 
 // ToOrganizationDTO converts an Organization entity to DTO
@@ -226,6 +234,30 @@ func ToAppointmentCalendarDataDTOs(appointments []*repositories.AppointmentCalen
 	dtos := make([]*AppointmentCalendarDataDTO, len(appointments))
 	for i, appt := range appointments {
 		dtos[i] = ToAppointmentCalendarDataDTO(appt)
+	}
+	return dtos
+}
+
+// ToServiceDTO converts a Service entity to DTO
+func ToServiceDTO(service *entities.Service) *ServiceDTO {
+	if service == nil {
+		return nil
+	}
+	return &ServiceDTO{
+		ID:        service.ID,
+		Name:      service.Name,
+		BasePrice: service.BasePrice,
+	}
+}
+
+// ToServiceDTOs converts a slice of Service entities to DTOs
+func ToServiceDTOs(services []*entities.Service) []*ServiceDTO {
+	if services == nil {
+		return nil
+	}
+	dtos := make([]*ServiceDTO, len(services))
+	for i, service := range services {
+		dtos[i] = ToServiceDTO(service)
 	}
 	return dtos
 }

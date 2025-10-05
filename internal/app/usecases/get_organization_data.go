@@ -68,6 +68,7 @@ func (uc *GetOrganizationDataUseCase) Execute(ctx context.Context, orgID uuid.UU
 		Units:        dto.ToUnitDTOs(orgData.Units),
 		Doctors:      dto.ToDoctorDTOs(orgData.Doctors),
 		Appointments: dto.ToAppointmentCalendarDataDTOs(orgData.Appointments),
+		Services:     dto.ToServiceDTOs(orgData.Services),
 	}
 
 	return response, nil

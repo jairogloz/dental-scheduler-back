@@ -101,12 +101,19 @@ func (r *OrganizationPostgresRepository) GetOrganizationData(ctx context.Context
 		return nil, fmt.Errorf("failed to get appointments: %w", err)
 	}
 
+	// Get services for this organization
+	services, err := r.getServicesByOrganization(ctx, orgID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get services: %w", err)
+	}
+
 	return &repositories.OrganizationData{
 		Organization: org,
 		Clinics:      clinics,
 		Units:        units,
 		Doctors:      doctors,
 		Appointments: appointments,
+		Services:     services,
 	}, nil
 }
 
@@ -279,4 +286,38 @@ func (r *OrganizationPostgresRepository) getAppointmentsByOrganization(ctx conte
 	}
 
 	return appointments, rows.Err()
+}
+
+// getServicesByOrganization retrieves all services for an organization
+func (r *OrganizationPostgresRepository) getServicesByOrganization(ctx context.Context, orgID uuid.UUID) ([]*entities.Service, error) {
+	query := `
+		SELECT id, name, base_price, organization_id, created_at, updated_at
+		FROM services
+		WHERE organization_id = $1
+		ORDER BY name`
+
+	rows, err := r.db.QueryContext(ctx, query, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var services []*entities.Service
+	for rows.Next() {
+		var service entities.Service
+		err := rows.Scan(
+			&service.ID,
+			&service.Name,
+			&service.BasePrice,
+			&service.OrganizationID,
+			&service.CreatedAt,
+			&service.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		services = append(services, &service)
+	}
+
+	return services, rows.Err()
 }

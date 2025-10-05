@@ -16,6 +16,7 @@ type OrganizationData struct {
 	Units        []*entities.Unit
 	Doctors      []*entities.Doctor
 	Appointments []*AppointmentCalendarData
+	Services     []*entities.Service
 }
 
 // AppointmentCalendarData represents minimal appointment data for calendar view
