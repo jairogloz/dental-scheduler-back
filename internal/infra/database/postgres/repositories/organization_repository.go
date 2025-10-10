@@ -232,8 +232,10 @@ func (r *OrganizationPostgresRepository) getAppointmentsByOrganization(ctx conte
 		SELECT DISTINCT 
 			a.id, 
 			a.patient_id,
-			CONCAT(p.first_name, ' ', COALESCE(p.last_name, '')) as patient_name,
+			p.first_name as patient_first_name,
+			p.last_name as patient_last_name,
 			p.phone as patient_phone,
+			p.email as patient_email,
 			a.doctor_id,
 			c.id as clinic_id,
 			a.unit_id,
@@ -270,8 +272,10 @@ func (r *OrganizationPostgresRepository) getAppointmentsByOrganization(ctx conte
 		err := rows.Scan(
 			&appt.ID,
 			&appt.PatientID,
-			&appt.PatientName,
+			&appt.PatientFirstName,
+			&appt.PatientLastName,
 			&appt.PatientPhone,
+			&appt.PatientEmail,
 			&appt.DoctorID,
 			&appt.ClinicID,
 			&appt.UnitID,

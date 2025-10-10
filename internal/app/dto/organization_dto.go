@@ -76,21 +76,28 @@ type DoctorDTO struct {
 	UpdatedAt      time.Time  `json:"updated_at"`
 }
 
+// PatientCalendarDataDTO represents minimal patient data for calendar appointments
+type PatientCalendarDataDTO struct {
+	ID        uuid.UUID `json:"id"`
+	FirstName string    `json:"first_name"`
+	LastName  *string   `json:"last_name,omitempty"`
+	Phone     *string   `json:"phone,omitempty"`
+	Email     *string   `json:"email,omitempty"`
+}
+
 // AppointmentCalendarDataDTO represents minimal appointment data for calendar view
 type AppointmentCalendarDataDTO struct {
-	ID           uuid.UUID `json:"id"`
-	PatientID    uuid.UUID `json:"patient_id"`
-	PatientName  string    `json:"patient_name"`
-	PatientPhone *string   `json:"patient_phone,omitempty"`
-	DoctorID     uuid.UUID `json:"doctor_id"`
-	ClinicID     uuid.UUID `json:"clinic_id"`
-	UnitID       uuid.UUID `json:"unit_id"`
-	StartTime    time.Time `json:"start_time"`
-	EndTime      time.Time `json:"end_time"`
-	Status       string    `json:"status"`
-	ServiceID    *string   `json:"service_id,omitempty"`
-	ServiceName  *string   `json:"service_name,omitempty"`
-	IsFirstVisit bool      `json:"is_first_visit"`
+	ID           uuid.UUID               `json:"id"`
+	Patient      *PatientCalendarDataDTO `json:"patient"`
+	DoctorID     uuid.UUID               `json:"doctor_id"`
+	ClinicID     uuid.UUID               `json:"clinic_id"`
+	UnitID       uuid.UUID               `json:"unit_id"`
+	StartTime    time.Time               `json:"start_time"`
+	EndTime      time.Time               `json:"end_time"`
+	Status       string                  `json:"status"`
+	ServiceID    *string                 `json:"service_id,omitempty"`
+	ServiceName  *string                 `json:"service_name,omitempty"`
+	IsFirstVisit bool                    `json:"is_first_visit"`
 }
 
 // ServiceDTO represents service data in API responses
@@ -211,11 +218,18 @@ func ToAppointmentCalendarDataDTO(appt *repositories.AppointmentCalendarData) *A
 	if appt == nil {
 		return nil
 	}
+
+	patient := &PatientCalendarDataDTO{
+		ID:        appt.PatientID,
+		FirstName: appt.PatientFirstName,
+		LastName:  appt.PatientLastName,
+		Phone:     appt.PatientPhone,
+		Email:     appt.PatientEmail,
+	}
+
 	return &AppointmentCalendarDataDTO{
 		ID:           appt.ID,
-		PatientID:    appt.PatientID,
-		PatientName:  appt.PatientName,
-		PatientPhone: appt.PatientPhone,
+		Patient:      patient,
 		DoctorID:     appt.DoctorID,
 		ClinicID:     appt.ClinicID,
 		UnitID:       appt.UnitID,
