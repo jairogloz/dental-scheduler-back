@@ -83,27 +83,34 @@ type GetAppointmentsRequest struct {
 	Limit     int    `form:"limit,omitempty"`
 }
 
+// PatientListDataDTO represents minimal patient data for appointment lists
+type PatientListDataDTO struct {
+	ID        string  `json:"id"`
+	FirstName string  `json:"first_name"`
+	LastName  *string `json:"last_name,omitempty"`
+	Phone     *string `json:"phone,omitempty"`
+	Email     *string `json:"email,omitempty"`
+}
+
 // AppointmentListResponse represents an appointment with all related details for listing
 type AppointmentListResponse struct {
-	ID           string    `json:"id"`
-	PatientID    string    `json:"patient_id"`
-	PatientName  string    `json:"patient_name"`
-	PatientPhone string    `json:"patient_phone,omitempty"`
-	DoctorID     string    `json:"doctor_id"`
-	DoctorName   string    `json:"doctor_name"`
-	ClinicID     string    `json:"clinic_id"`
-	ClinicName   string    `json:"clinic_name"`
-	UnitID       *string   `json:"unit_id,omitempty"`
-	UnitName     *string   `json:"unit_name,omitempty"`
-	StartTime    time.Time `json:"start_time"`
-	EndTime      time.Time `json:"end_time"`
-	Status       string    `json:"status"`
-	ServiceID    string    `json:"service_id,omitempty"`
-	ServiceName  string    `json:"service_name,omitempty"`
-	Notes        string    `json:"notes,omitempty"`
-	IsFirstVisit bool      `json:"is_first_visit"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID           string              `json:"id"`
+	Patient      *PatientListDataDTO `json:"patient"`
+	DoctorID     string              `json:"doctor_id"`
+	DoctorName   string              `json:"doctor_name"`
+	ClinicID     string              `json:"clinic_id"`
+	ClinicName   string              `json:"clinic_name"`
+	UnitID       *string             `json:"unit_id,omitempty"`
+	UnitName     *string             `json:"unit_name,omitempty"`
+	StartTime    time.Time           `json:"start_time"`
+	EndTime      time.Time           `json:"end_time"`
+	Status       string              `json:"status"`
+	ServiceID    string              `json:"service_id,omitempty"`
+	ServiceName  string              `json:"service_name,omitempty"`
+	Notes        string              `json:"notes,omitempty"`
+	IsFirstVisit bool                `json:"is_first_visit"`
+	CreatedAt    time.Time           `json:"created_at"`
+	UpdatedAt    time.Time           `json:"updated_at"`
 }
 
 // AppointmentSummary provides summary statistics for the appointments

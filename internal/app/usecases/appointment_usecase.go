@@ -427,23 +427,24 @@ func (uc *AppointmentUseCase) buildAppointmentResponse(appointments []*repositor
 	dateMap := make(map[string]int)
 
 	for i, appt := range appointments {
-		// Build appointment DTO
-		patientName := appt.Patient.FirstName
-		if appt.Patient.LastName != nil && *appt.Patient.LastName != "" {
-			patientName += " " + *appt.Patient.LastName
-		}
-
 		// Determine if this is the patient's first visit
 		isFirstVisit := false
 		if appt.Patient.FirstAppointmentID != nil && *appt.Patient.FirstAppointmentID == appt.Appointment.ID {
 			isFirstVisit = true
 		}
 
+		// Build patient DTO
+		patient := &dto.PatientListDataDTO{
+			ID:        appt.Appointment.PatientID.String(),
+			FirstName: appt.Patient.FirstName,
+			LastName:  appt.Patient.LastName,
+			Phone:     appt.Patient.Phone,
+			Email:     appt.Patient.Email,
+		}
+
 		appointmentDTOs[i] = dto.AppointmentListResponse{
 			ID:           appt.Appointment.ID.String(),
-			PatientID:    appt.Appointment.PatientID.String(),
-			PatientName:  patientName,
-			PatientPhone: getStringPtr(appt.Patient.Phone),
+			Patient:      patient,
 			DoctorID:     appt.Appointment.DoctorID.String(),
 			DoctorName:   appt.Doctor.Name,
 			ClinicID:     appt.Clinic.ID.String(),
