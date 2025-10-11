@@ -159,10 +159,11 @@ type PatientSearchRequest struct {
 
 // PatientSearchResponse represents minimal patient data for autocomplete
 type PatientSearchResponse struct {
-	ID    string  `json:"id"`
-	Name  string  `json:"name"`
-	Phone *string `json:"phone,omitempty"`
-	Email *string `json:"email,omitempty"`
+	ID        string  `json:"id"`
+	FirstName string  `json:"first_name"`
+	LastName  *string `json:"last_name,omitempty"`
+	Phone     *string `json:"phone,omitempty"`
+	Email     *string `json:"email,omitempty"`
 }
 
 // PatientSearchResult represents the wrapper for search results
@@ -173,16 +174,11 @@ type PatientSearchResult struct {
 
 // ToPatientSearchResponse converts entities.Patient to PatientSearchResponse
 func ToPatientSearchResponse(p *entities.Patient) PatientSearchResponse {
-	// Combine first and last name for display
-	name := p.FirstName
-	if p.LastName != nil && *p.LastName != "" {
-		name += " " + *p.LastName
-	}
-
 	return PatientSearchResponse{
-		ID:    p.ID.String(),
-		Name:  name,
-		Phone: p.Phone,
-		Email: p.Email,
+		ID:        p.ID.String(),
+		FirstName: p.FirstName,
+		LastName:  p.LastName,
+		Phone:     p.Phone,
+		Email:     p.Email,
 	}
 }
