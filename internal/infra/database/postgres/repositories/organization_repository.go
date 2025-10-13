@@ -251,11 +251,17 @@ func (r *OrganizationPostgresRepository) getAppointmentsByOrganization(ctx conte
 		FROM appointments a
 		LEFT JOIN units u ON a.unit_id = u.id
 		LEFT JOIN clinics c ON u.clinic_id = c.id
+		LEFT JOIN doctors d ON a.doctor_id = d.id
 		LEFT JOIN patients p ON a.patient_id = p.id
 		LEFT JOIN services s ON a.service_id = s.id
-		WHERE (c.organization_id = $1 OR (a.unit_id IS NULL AND EXISTS(
-			SELECT 1 FROM doctors d WHERE d.id = a.doctor_id AND d.organization_id = $1
-		)))
+		WHERE (
+			c.organization_id = $1 OR 
+			d.organization_id = $1 OR
+			EXISTS(
+				SELECT 1 FROM patient_organizations po 
+				WHERE po.patient_id = a.patient_id AND po.organization_id = $1
+			)
+		)
 		AND a.start_time >= $2
 		AND a.start_time <= $3
 		AND a.status != 'cancelled'

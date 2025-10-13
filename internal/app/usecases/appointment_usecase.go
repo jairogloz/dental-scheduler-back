@@ -449,13 +449,13 @@ func (uc *AppointmentUseCase) buildAppointmentResponse(appointments []*repositor
 		if appt.Doctor != nil {
 			doctorName = appt.Doctor.Name
 		}
-		
+
 		var clinicID, clinicName string
 		if appt.Clinic != nil {
 			clinicID = appt.Clinic.ID.String()
 			clinicName = appt.Clinic.Name
 		}
-		
+
 		var unitID *string
 		var unitName *string
 		if appt.Unit != nil {
