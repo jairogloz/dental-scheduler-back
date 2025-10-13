@@ -249,11 +249,13 @@ func (r *OrganizationPostgresRepository) getAppointmentsByOrganization(ctx conte
 				ELSE false
 			END as is_first_visit
 		FROM appointments a
-		INNER JOIN units u ON a.unit_id = u.id
-		INNER JOIN clinics c ON u.clinic_id = c.id
-		INNER JOIN patients p ON a.patient_id = p.id
+		LEFT JOIN units u ON a.unit_id = u.id
+		LEFT JOIN clinics c ON u.clinic_id = c.id
+		LEFT JOIN patients p ON a.patient_id = p.id
 		LEFT JOIN services s ON a.service_id = s.id
-		WHERE c.organization_id = $1
+		WHERE (c.organization_id = $1 OR (a.unit_id IS NULL AND EXISTS(
+			SELECT 1 FROM doctors d WHERE d.id = a.doctor_id AND d.organization_id = $1
+		)))
 		AND a.start_time >= $2
 		AND a.start_time <= $3
 		AND a.status != 'cancelled'
@@ -269,26 +271,72 @@ func (r *OrganizationPostgresRepository) getAppointmentsByOrganization(ctx conte
 	var appointments []*repositories.AppointmentCalendarData
 	for rows.Next() {
 		var appt repositories.AppointmentCalendarData
+		var patientID, doctorID, clinicID, unitID sql.NullString
+		var patientFirstName sql.NullString
+		var patientLastName, patientPhone, patientEmail sql.NullString
+		var serviceID, serviceName sql.NullString
+
 		err := rows.Scan(
 			&appt.ID,
-			&appt.PatientID,
-			&appt.PatientFirstName,
-			&appt.PatientLastName,
-			&appt.PatientPhone,
-			&appt.PatientEmail,
-			&appt.DoctorID,
-			&appt.ClinicID,
-			&appt.UnitID,
+			&patientID,
+			&patientFirstName,
+			&patientLastName,
+			&patientPhone,
+			&patientEmail,
+			&doctorID,
+			&clinicID,
+			&unitID,
 			&appt.StartTime,
 			&appt.EndTime,
 			&appt.Status,
-			&appt.ServiceID,
-			&appt.ServiceName,
+			&serviceID,
+			&serviceName,
 			&appt.IsFirstVisit,
 		)
 		if err != nil {
 			return nil, err
 		}
+
+		// Convert nullable fields
+		if patientID.Valid {
+			if parsedPatientID, err := uuid.Parse(patientID.String); err == nil {
+				appt.PatientID = &parsedPatientID
+			}
+		}
+		if doctorID.Valid {
+			if parsedDoctorID, err := uuid.Parse(doctorID.String); err == nil {
+				appt.DoctorID = &parsedDoctorID
+			}
+		}
+		if clinicID.Valid {
+			if parsedClinicID, err := uuid.Parse(clinicID.String); err == nil {
+				appt.ClinicID = &parsedClinicID
+			}
+		}
+		if unitID.Valid {
+			if parsedUnitID, err := uuid.Parse(unitID.String); err == nil {
+				appt.UnitID = &parsedUnitID
+			}
+		}
+		if patientFirstName.Valid {
+			appt.PatientFirstName = &patientFirstName.String
+		}
+		if patientLastName.Valid {
+			appt.PatientLastName = &patientLastName.String
+		}
+		if patientPhone.Valid {
+			appt.PatientPhone = &patientPhone.String
+		}
+		if patientEmail.Valid {
+			appt.PatientEmail = &patientEmail.String
+		}
+		if serviceID.Valid {
+			appt.ServiceID = &serviceID.String
+		}
+		if serviceName.Valid {
+			appt.ServiceName = &serviceName.String
+		}
+
 		appointments = append(appointments, &appt)
 	}
 

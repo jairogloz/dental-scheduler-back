@@ -58,11 +58,13 @@ func (r *AppointmentPostgresRepository) GetByID(ctx context.Context, id uuid.UUI
 
 	var appointment entities.Appointment
 	var status string
+	var patientID, doctorID, unitID sql.NullString
+
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&appointment.ID,
-		&appointment.PatientID,
-		&appointment.DoctorID,
-		&appointment.UnitID,
+		&patientID,
+		&doctorID,
+		&unitID,
 		&appointment.ServiceID,
 		&status,
 		&appointment.StartTime,
@@ -77,6 +79,23 @@ func (r *AppointmentPostgresRepository) GetByID(ctx context.Context, id uuid.UUI
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get appointment: %w", err)
+	}
+
+	// Convert nullable foreign keys
+	if patientID.Valid {
+		if parsedID, err := uuid.Parse(patientID.String); err == nil {
+			appointment.PatientID = &parsedID
+		}
+	}
+	if doctorID.Valid {
+		if parsedID, err := uuid.Parse(doctorID.String); err == nil {
+			appointment.DoctorID = &parsedID
+		}
+	}
+	if unitID.Valid {
+		if parsedID, err := uuid.Parse(unitID.String); err == nil {
+			appointment.UnitID = &parsedID
+		}
 	}
 
 	appointment.Status = entities.AppointmentStatus(status)
@@ -337,12 +356,12 @@ func (r *AppointmentPostgresRepository) GetByOrganizationAndDateRange(ctx contex
 	// Build the base query with joins
 	baseQuery := `
 		FROM appointments a
-		INNER JOIN units u ON a.unit_id = u.id
-		INNER JOIN clinics c ON u.clinic_id = c.id
-		INNER JOIN doctors d ON a.doctor_id = d.id
-		INNER JOIN patients p ON a.patient_id = p.id
+		LEFT JOIN units u ON a.unit_id = u.id
+		LEFT JOIN clinics c ON u.clinic_id = c.id
+		LEFT JOIN doctors d ON a.doctor_id = d.id
+		LEFT JOIN patients p ON a.patient_id = p.id
 		LEFT JOIN services s ON a.service_id = s.id
-		WHERE c.organization_id = $1 
+		WHERE (c.organization_id = $1 OR (a.unit_id IS NULL AND d.organization_id = $1) OR (a.unit_id IS NULL AND a.doctor_id IS NULL))
 		AND a.start_time >= $2 
 		AND a.start_time < $3`
 
@@ -413,19 +432,36 @@ func (r *AppointmentPostgresRepository) GetByOrganizationAndDateRange(ctx contex
 
 	for rows.Next() {
 		var appointment entities.Appointment
-		var patient entities.Patient
-		var doctor entities.Doctor
-		var unit entities.Unit
-		var clinic entities.Clinic
-		var serviceName sql.NullString
 		var status string
+		var serviceName sql.NullString
+
+		// Nullable appointment foreign keys
+		var patientID, doctorID, unitID sql.NullString
+
+		// Nullable patient fields
+		var patientIDScan, patientFirstName, patientLastName, patientPhone, patientEmail sql.NullString
+		var patientFirstAppointmentID sql.NullString
+		var patientCreatedAt, patientUpdatedAt sql.NullTime
+
+		// Nullable doctor fields
+		var doctorIDScan, doctorOrgID, doctorUserID, doctorName, doctorSpecialty, doctorEmail, doctorPhone sql.NullString
+		var doctorIsActive sql.NullBool
+		var doctorCreatedAt, doctorUpdatedAt sql.NullTime
+
+		// Nullable unit fields
+		var unitIDScan, unitName, unitDescription, unitClinicID sql.NullString
+		var unitCreatedAt, unitUpdatedAt sql.NullTime
+
+		// Nullable clinic fields
+		var clinicIDScan, clinicName, clinicAddress, clinicPhone, clinicEmail, clinicOrgID sql.NullString
+		var clinicCreatedAt, clinicUpdatedAt sql.NullTime
 
 		err := rows.Scan(
 			// Appointment fields
 			&appointment.ID,
-			&appointment.PatientID,
-			&appointment.DoctorID,
-			&appointment.UnitID,
+			&patientID,
+			&doctorID,
+			&unitID,
 			&appointment.ServiceID,
 			&status,
 			&appointment.StartTime,
@@ -436,44 +472,61 @@ func (r *AppointmentPostgresRepository) GetByOrganizationAndDateRange(ctx contex
 			// Service name
 			&serviceName,
 			// Patient fields
-			&patient.ID,
-			&patient.FirstName,
-			&patient.LastName,
-			&patient.Phone,
-			&patient.Email,
-			&patient.FirstAppointmentID,
-			&patient.CreatedAt,
-			&patient.UpdatedAt,
+			&patientIDScan,
+			&patientFirstName,
+			&patientLastName,
+			&patientPhone,
+			&patientEmail,
+			&patientFirstAppointmentID,
+			&patientCreatedAt,
+			&patientUpdatedAt,
 			// Doctor fields
-			&doctor.ID,
-			&doctor.OrganizationID,
-			&doctor.UserID,
-			&doctor.Name,
-			&doctor.Specialty,
-			&doctor.Email,
-			&doctor.Phone,
-			&doctor.IsActive,
-			&doctor.CreatedAt,
-			&doctor.UpdatedAt,
+			&doctorIDScan,
+			&doctorOrgID,
+			&doctorUserID,
+			&doctorName,
+			&doctorSpecialty,
+			&doctorEmail,
+			&doctorPhone,
+			&doctorIsActive,
+			&doctorCreatedAt,
+			&doctorUpdatedAt,
 			// Unit fields
-			&unit.ID,
-			&unit.Name,
-			&unit.Description,
-			&unit.ClinicID,
-			&unit.CreatedAt,
-			&unit.UpdatedAt,
+			&unitIDScan,
+			&unitName,
+			&unitDescription,
+			&unitClinicID,
+			&unitCreatedAt,
+			&unitUpdatedAt,
 			// Clinic fields
-			&clinic.ID,
-			&clinic.Name,
-			&clinic.Address,
-			&clinic.Phone,
-			&clinic.Email,
-			&clinic.OrganizationID,
-			&clinic.CreatedAt,
-			&clinic.UpdatedAt,
+			&clinicIDScan,
+			&clinicName,
+			&clinicAddress,
+			&clinicPhone,
+			&clinicEmail,
+			&clinicOrgID,
+			&clinicCreatedAt,
+			&clinicUpdatedAt,
 		)
 		if err != nil {
 			return nil, 0, fmt.Errorf("failed to scan appointment with details: %w", err)
+		}
+
+		// Set appointment foreign keys
+		if patientID.Valid {
+			if parsedID, err := uuid.Parse(patientID.String); err == nil {
+				appointment.PatientID = &parsedID
+			}
+		}
+		if doctorID.Valid {
+			if parsedID, err := uuid.Parse(doctorID.String); err == nil {
+				appointment.DoctorID = &parsedID
+			}
+		}
+		if unitID.Valid {
+			if parsedID, err := uuid.Parse(unitID.String); err == nil {
+				appointment.UnitID = &parsedID
+			}
 		}
 
 		// Set appointment status
@@ -485,12 +538,139 @@ func (r *AppointmentPostgresRepository) GetByOrganizationAndDateRange(ctx contex
 			serviceNamePtr = &serviceName.String
 		}
 
+		// Build entities only if they have valid data
+		var patient *entities.Patient
+		if patientIDScan.Valid {
+			patient = &entities.Patient{}
+			if parsedID, err := uuid.Parse(patientIDScan.String); err == nil {
+				patient.ID = parsedID
+			}
+			if patientFirstName.Valid {
+				patient.FirstName = patientFirstName.String
+			}
+			if patientLastName.Valid {
+				patient.LastName = &patientLastName.String
+			}
+			if patientPhone.Valid {
+				patient.Phone = &patientPhone.String
+			}
+			if patientEmail.Valid {
+				patient.Email = &patientEmail.String
+			}
+			if patientFirstAppointmentID.Valid {
+				if parsedID, err := uuid.Parse(patientFirstAppointmentID.String); err == nil {
+					patient.FirstAppointmentID = &parsedID
+				}
+			}
+			if patientCreatedAt.Valid {
+				patient.CreatedAt = patientCreatedAt.Time
+			}
+			if patientUpdatedAt.Valid {
+				patient.UpdatedAt = patientUpdatedAt.Time
+			}
+		}
+
+		var doctor *entities.Doctor
+		if doctorIDScan.Valid {
+			doctor = &entities.Doctor{}
+			if parsedID, err := uuid.Parse(doctorIDScan.String); err == nil {
+				doctor.ID = parsedID
+			}
+			if doctorOrgID.Valid {
+				if parsedID, err := uuid.Parse(doctorOrgID.String); err == nil {
+					doctor.OrganizationID = parsedID
+				}
+			}
+			if doctorUserID.Valid {
+				if parsedID, err := uuid.Parse(doctorUserID.String); err == nil {
+					doctor.UserID = &parsedID
+				}
+			}
+			if doctorName.Valid {
+				doctor.Name = doctorName.String
+			}
+			if doctorSpecialty.Valid {
+				doctor.Specialty = &doctorSpecialty.String
+			}
+			if doctorEmail.Valid {
+				doctor.Email = &doctorEmail.String
+			}
+			if doctorPhone.Valid {
+				doctor.Phone = &doctorPhone.String
+			}
+			if doctorIsActive.Valid {
+				doctor.IsActive = doctorIsActive.Bool
+			}
+			if doctorCreatedAt.Valid {
+				doctor.CreatedAt = doctorCreatedAt.Time
+			}
+			if doctorUpdatedAt.Valid {
+				doctor.UpdatedAt = doctorUpdatedAt.Time
+			}
+		}
+
+		var unit *entities.Unit
+		if unitIDScan.Valid {
+			unit = &entities.Unit{}
+			if parsedID, err := uuid.Parse(unitIDScan.String); err == nil {
+				unit.ID = parsedID
+			}
+			if unitName.Valid {
+				unit.Name = unitName.String
+			}
+			if unitDescription.Valid {
+				unit.Description = &unitDescription.String
+			}
+			if unitClinicID.Valid {
+				if parsedID, err := uuid.Parse(unitClinicID.String); err == nil {
+					unit.ClinicID = parsedID
+				}
+			}
+			if unitCreatedAt.Valid {
+				unit.CreatedAt = unitCreatedAt.Time
+			}
+			if unitUpdatedAt.Valid {
+				unit.UpdatedAt = unitUpdatedAt.Time
+			}
+		}
+
+		var clinic *entities.Clinic
+		if clinicIDScan.Valid {
+			clinic = &entities.Clinic{}
+			if parsedID, err := uuid.Parse(clinicIDScan.String); err == nil {
+				clinic.ID = parsedID
+			}
+			if clinicName.Valid {
+				clinic.Name = clinicName.String
+			}
+			if clinicAddress.Valid {
+				clinic.Address = &clinicAddress.String
+			}
+			if clinicPhone.Valid {
+				clinic.Phone = &clinicPhone.String
+			}
+			if clinicEmail.Valid {
+				clinic.Email = &clinicEmail.String
+			}
+			if clinicOrgID.Valid {
+				if parsedID, err := uuid.Parse(clinicOrgID.String); err == nil {
+					clinic.OrganizationID = parsedID
+				}
+			}
+			if clinicCreatedAt.Valid {
+				clinic.CreatedAt = clinicCreatedAt.Time
+			}
+			if clinicUpdatedAt.Valid {
+				clinic.UpdatedAt = clinicUpdatedAt.Time
+			}
+		}
+
 		appointmentWithDetails := &repositories.AppointmentWithDetails{
 			Appointment: &appointment,
-			Patient:     &patient,
-			Doctor:      &doctor,
-			Unit:        &unit,
-			Clinic:      &clinic,
+			Patient:     patient,
+			Doctor:      doctor,
+			Unit:        unit,
+			Clinic:      clinic,
 			ServiceName: serviceNamePtr,
 		}
 

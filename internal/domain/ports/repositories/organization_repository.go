@@ -21,21 +21,21 @@ type OrganizationData struct {
 
 // AppointmentCalendarData represents minimal appointment data for calendar view
 type AppointmentCalendarData struct {
-	ID               uuid.UUID `json:"id"`
-	PatientID        uuid.UUID `json:"patient_id"`
-	PatientFirstName string    `json:"patient_first_name"`
-	PatientLastName  *string   `json:"patient_last_name"`
-	PatientPhone     *string   `json:"patient_phone"`
-	PatientEmail     *string   `json:"patient_email"`
-	DoctorID         uuid.UUID `json:"doctor_id"`
-	ClinicID         uuid.UUID `json:"clinic_id"`
-	UnitID           uuid.UUID `json:"unit_id"`
-	StartTime        time.Time `json:"start_time"`
-	EndTime          time.Time `json:"end_time"`
-	Status           string    `json:"status"`
-	ServiceID        *string   `json:"service_id"`
-	ServiceName      *string   `json:"service_name"`
-	IsFirstVisit     bool      `json:"is_first_visit"`
+	ID               uuid.UUID  `json:"id"`
+	PatientID        *uuid.UUID `json:"patient_id,omitempty"`
+	PatientFirstName *string    `json:"patient_first_name,omitempty"`
+	PatientLastName  *string    `json:"patient_last_name,omitempty"`
+	PatientPhone     *string    `json:"patient_phone,omitempty"`
+	PatientEmail     *string    `json:"patient_email,omitempty"`
+	DoctorID         *uuid.UUID `json:"doctor_id,omitempty"`
+	ClinicID         *uuid.UUID `json:"clinic_id,omitempty"`
+	UnitID           *uuid.UUID `json:"unit_id,omitempty"`
+	StartTime        time.Time  `json:"start_time"`
+	EndTime          time.Time  `json:"end_time"`
+	Status           string     `json:"status"`
+	ServiceID        *string    `json:"service_id,omitempty"`
+	ServiceName      *string    `json:"service_name,omitempty"`
+	IsFirstVisit     bool       `json:"is_first_visit"`
 }
 
 // OrganizationRepository defines the interface for organization data operations

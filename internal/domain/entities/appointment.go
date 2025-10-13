@@ -16,15 +16,14 @@ const (
 	AppointmentStatusCancelled   AppointmentStatus = "cancelled"
 	AppointmentStatusRescheduled AppointmentStatus = "rescheduled"
 	AppointmentStatusNoShow      AppointmentStatus = "no-show"
-	AppointmentWithError         AppointmentStatus = "with-error"
 )
 
 // Appointment represents an appointment entity
 type Appointment struct {
 	ID                uuid.UUID         `json:"id" db:"id"`
-	PatientID         uuid.UUID         `json:"patient_id" db:"patient_id"`
-	DoctorID          uuid.UUID         `json:"doctor_id" db:"doctor_id"`
-	UnitID            uuid.UUID         `json:"unit_id" db:"unit_id"`
+	PatientID         *uuid.UUID        `json:"patient_id,omitempty" db:"patient_id"`
+	DoctorID          *uuid.UUID        `json:"doctor_id,omitempty" db:"doctor_id"`
+	UnitID            *uuid.UUID        `json:"unit_id,omitempty" db:"unit_id"`
 	ServiceID         *string           `json:"service_id,omitempty" db:"service_id"`
 	Status            AppointmentStatus `json:"status" db:"status"`
 	StartTime         time.Time         `json:"start_time" db:"start_time"`
@@ -37,17 +36,8 @@ type Appointment struct {
 
 // Validate checks if the appointment entity is valid
 func (a *Appointment) Validate() error {
-	if a.PatientID == uuid.Nil {
-		return ErrInvalidPatientID
-	}
-
-	if a.DoctorID == uuid.Nil {
-		return ErrInvalidDoctorID
-	}
-
-	if a.UnitID == uuid.Nil {
-		return ErrInvalidUnitID
-	}
+	// Note: PatientID, DoctorID, and UnitID can now be nil for incomplete appointments
+	// Individual validation can be performed at the business logic level when needed
 
 	if a.StartTime.IsZero() || a.EndTime.IsZero() {
 		return ErrInvalidAppointmentTime
@@ -104,8 +94,7 @@ func IsValidAppointmentStatus(status AppointmentStatus) bool {
 		AppointmentStatusCompleted,
 		AppointmentStatusCancelled,
 		AppointmentStatusRescheduled,
-		AppointmentStatusNoShow,
-		AppointmentWithError:
+		AppointmentStatusNoShow:
 		return true
 	default:
 		return false

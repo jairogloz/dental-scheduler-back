@@ -34,10 +34,10 @@ type UpdateAppointmentRequest struct {
 // AppointmentResponse represents the response for an appointment
 type AppointmentResponse struct {
 	ID           uuid.UUID                  `json:"id"`
-	PatientID    uuid.UUID                  `json:"patient_id"`
+	PatientID    *uuid.UUID                 `json:"patient_id,omitempty"`
 	PatientName  string                     `json:"patient_name"`
-	DoctorID     uuid.UUID                  `json:"doctor_id"`
-	UnitID       uuid.UUID                  `json:"unit_id"`
+	DoctorID     *uuid.UUID                 `json:"doctor_id,omitempty"`
+	UnitID       *uuid.UUID                 `json:"unit_id,omitempty"`
 	ServiceID    *string                    `json:"service_id,omitempty"`
 	ServiceName  *string                    `json:"service_name,omitempty"`
 	Status       entities.AppointmentStatus `json:"status"`
@@ -147,9 +147,9 @@ func (req *CreateAppointmentRequest) ToEntity() *entities.Appointment {
 	serviceID := req.ServiceID
 	return &entities.Appointment{
 		ID:        uuid.New(),
-		PatientID: req.PatientID,
-		DoctorID:  req.DoctorID,
-		UnitID:    req.UnitID,
+		PatientID: &req.PatientID,
+		DoctorID:  &req.DoctorID,
+		UnitID:    &req.UnitID,
 		ServiceID: &serviceID,
 		Status:    entities.AppointmentStatusScheduled,
 		StartTime: req.StartTime,
@@ -224,13 +224,13 @@ func ToAppointmentResponseWithPatientNameAndFirstVisit(a *entities.Appointment, 
 func (req *UpdateAppointmentRequest) ToEntityUpdate(existing *entities.Appointment) *entities.Appointment {
 	// Only update fields that are provided (not nil)
 	if req.PatientID != nil {
-		existing.PatientID = *req.PatientID
+		existing.PatientID = req.PatientID
 	}
 	if req.DoctorID != nil {
-		existing.DoctorID = *req.DoctorID
+		existing.DoctorID = req.DoctorID
 	}
 	if req.UnitID != nil {
-		existing.UnitID = *req.UnitID
+		existing.UnitID = req.UnitID
 	}
 	if req.ServiceID != nil {
 		existing.ServiceID = req.ServiceID

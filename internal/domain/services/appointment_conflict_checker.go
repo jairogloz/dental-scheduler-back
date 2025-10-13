@@ -39,36 +39,40 @@ func (acc *AppointmentConflictChecker) CheckForConflicts(
 		return entities.ErrEndTimeBeforeStartTime
 	}
 
-	// Check for doctor conflicts
-	hasConflict, err := acc.appointmentRepo.CheckConflict(
-		ctx,
-		appointment.DoctorID,
-		appointment.UnitID,
-		appointment.StartTime,
-		appointment.EndTime,
-		&appointment.ID,
-	)
-	if err != nil {
-		return err
+	// Check for conflicts only if both doctor and unit are specified
+	if appointment.DoctorID != nil && appointment.UnitID != nil {
+		hasConflict, err := acc.appointmentRepo.CheckConflict(
+			ctx,
+			*appointment.DoctorID,
+			*appointment.UnitID,
+			appointment.StartTime,
+			appointment.EndTime,
+			&appointment.ID,
+		)
+		if err != nil {
+			return err
+		}
+
+		if hasConflict {
+			return entities.ErrAppointmentConflict
+		}
 	}
 
-	if hasConflict {
-		return entities.ErrAppointmentConflict
-	}
+	// Check doctor availability (only if doctor is specified)
+	if appointment.DoctorID != nil {
+		isAvailable, err := acc.availabilityRepo.IsAvailable(
+			ctx,
+			*appointment.DoctorID,
+			appointment.StartTime,
+			appointment.EndTime,
+		)
+		if err != nil {
+			return err
+		}
 
-	// Check doctor availability
-	isAvailable, err := acc.availabilityRepo.IsAvailable(
-		ctx,
-		appointment.DoctorID,
-		appointment.StartTime,
-		appointment.EndTime,
-	)
-	if err != nil {
-		return err
-	}
-
-	if !isAvailable {
-		return entities.ErrDoctorNotAvailable
+		if !isAvailable {
+			return entities.ErrDoctorNotAvailable
+		}
 	}
 
 	return nil

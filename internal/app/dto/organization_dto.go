@@ -78,20 +78,20 @@ type DoctorDTO struct {
 
 // PatientCalendarDataDTO represents minimal patient data for calendar appointments
 type PatientCalendarDataDTO struct {
-	ID        uuid.UUID `json:"id"`
-	FirstName string    `json:"first_name"`
-	LastName  *string   `json:"last_name,omitempty"`
-	Phone     *string   `json:"phone,omitempty"`
-	Email     *string   `json:"email,omitempty"`
+	ID        *uuid.UUID `json:"id,omitempty"`
+	FirstName *string    `json:"first_name,omitempty"`
+	LastName  *string    `json:"last_name,omitempty"`
+	Phone     *string    `json:"phone,omitempty"`
+	Email     *string    `json:"email,omitempty"`
 }
 
 // AppointmentCalendarDataDTO represents minimal appointment data for calendar view
 type AppointmentCalendarDataDTO struct {
 	ID           uuid.UUID               `json:"id"`
-	Patient      *PatientCalendarDataDTO `json:"patient"`
-	DoctorID     uuid.UUID               `json:"doctor_id"`
-	ClinicID     uuid.UUID               `json:"clinic_id"`
-	UnitID       uuid.UUID               `json:"unit_id"`
+	Patient      *PatientCalendarDataDTO `json:"patient,omitempty"`
+	DoctorID     *uuid.UUID              `json:"doctor_id,omitempty"`
+	ClinicID     *uuid.UUID              `json:"clinic_id,omitempty"`
+	UnitID       *uuid.UUID              `json:"unit_id,omitempty"`
 	StartTime    time.Time               `json:"start_time"`
 	EndTime      time.Time               `json:"end_time"`
 	Status       string                  `json:"status"`
@@ -219,12 +219,15 @@ func ToAppointmentCalendarDataDTO(appt *repositories.AppointmentCalendarData) *A
 		return nil
 	}
 
-	patient := &PatientCalendarDataDTO{
-		ID:        appt.PatientID,
-		FirstName: appt.PatientFirstName,
-		LastName:  appt.PatientLastName,
-		Phone:     appt.PatientPhone,
-		Email:     appt.PatientEmail,
+	var patient *PatientCalendarDataDTO
+	if appt.PatientID != nil {
+		patient = &PatientCalendarDataDTO{
+			ID:        appt.PatientID,
+			FirstName: appt.PatientFirstName,
+			LastName:  appt.PatientLastName,
+			Phone:     appt.PatientPhone,
+			Email:     appt.PatientEmail,
+		}
 	}
 
 	return &AppointmentCalendarDataDTO{

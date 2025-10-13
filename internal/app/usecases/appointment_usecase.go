@@ -245,24 +245,20 @@ func (uc *AppointmentUseCase) UpdateAppointment(ctx context.Context, id uuid.UUI
 	}
 
 	// Fetch patient data to include patient name in response
-	patient, err := uc.patientRepo.GetByID(ctx, updated.PatientID)
-	if err != nil {
-		// If we can't get patient data, return response without patient name
-		return dto.ToAppointmentResponse(updated), nil
-	}
-
 	patientName := ""
-	if patient != nil {
-		patientName = patient.FirstName
-		if patient.LastName != nil && *patient.LastName != "" {
-			patientName += " " + *patient.LastName
-		}
-	}
-
-	// Determine if this is the patient's first visit
 	isFirstVisit := false
-	if patient != nil && patient.FirstAppointmentID != nil && *patient.FirstAppointmentID == updated.ID {
-		isFirstVisit = true
+	if updated.PatientID != nil {
+		patient, err := uc.patientRepo.GetByID(ctx, *updated.PatientID)
+		if err == nil && patient != nil {
+			patientName = patient.FirstName
+			if patient.LastName != nil && *patient.LastName != "" {
+				patientName += " " + *patient.LastName
+			}
+			// Determine if this is the patient's first visit
+			if patient.FirstAppointmentID != nil && *patient.FirstAppointmentID == updated.ID {
+				isFirstVisit = true
+			}
+		}
 	}
 
 	return dto.ToAppointmentResponseWithPatientNameAndFirstVisit(updated, patientName, isFirstVisit), nil
@@ -429,28 +425,53 @@ func (uc *AppointmentUseCase) buildAppointmentResponse(appointments []*repositor
 	for i, appt := range appointments {
 		// Determine if this is the patient's first visit
 		isFirstVisit := false
-		if appt.Patient.FirstAppointmentID != nil && *appt.Patient.FirstAppointmentID == appt.Appointment.ID {
+		if appt.Patient != nil && appt.Patient.FirstAppointmentID != nil && *appt.Patient.FirstAppointmentID == appt.Appointment.ID {
 			isFirstVisit = true
 		}
 
 		// Build patient DTO
-		patient := &dto.PatientListDataDTO{
-			ID:        appt.Appointment.PatientID.String(),
-			FirstName: appt.Patient.FirstName,
-			LastName:  appt.Patient.LastName,
-			Phone:     appt.Patient.Phone,
-			Email:     appt.Patient.Email,
+		var patient *dto.PatientListDataDTO
+		if appt.Patient != nil && appt.Appointment.PatientID != nil {
+			patient = &dto.PatientListDataDTO{
+				ID:        appt.Appointment.PatientID.String(),
+				FirstName: appt.Patient.FirstName,
+				LastName:  appt.Patient.LastName,
+				Phone:     appt.Patient.Phone,
+				Email:     appt.Patient.Email,
+			}
+		}
+
+		// Handle nullable foreign keys safely
+		var doctorID, doctorName string
+		if appt.Appointment.DoctorID != nil {
+			doctorID = appt.Appointment.DoctorID.String()
+		}
+		if appt.Doctor != nil {
+			doctorName = appt.Doctor.Name
+		}
+		
+		var clinicID, clinicName string
+		if appt.Clinic != nil {
+			clinicID = appt.Clinic.ID.String()
+			clinicName = appt.Clinic.Name
+		}
+		
+		var unitID *string
+		var unitName *string
+		if appt.Unit != nil {
+			unitID = getStringPtrFromUUID(&appt.Unit.ID)
+			unitName = &appt.Unit.Name
 		}
 
 		appointmentDTOs[i] = dto.AppointmentListResponse{
 			ID:           appt.Appointment.ID.String(),
 			Patient:      patient,
-			DoctorID:     appt.Appointment.DoctorID.String(),
-			DoctorName:   appt.Doctor.Name,
-			ClinicID:     appt.Clinic.ID.String(),
-			ClinicName:   appt.Clinic.Name,
-			UnitID:       getStringPtrFromUUID(&appt.Unit.ID),
-			UnitName:     &appt.Unit.Name,
+			DoctorID:     doctorID,
+			DoctorName:   doctorName,
+			ClinicID:     clinicID,
+			ClinicName:   clinicName,
+			UnitID:       unitID,
+			UnitName:     unitName,
 			StartTime:    appt.Appointment.StartTime,
 			EndTime:      appt.Appointment.EndTime,
 			Status:       string(appt.Appointment.Status),
@@ -462,15 +483,17 @@ func (uc *AppointmentUseCase) buildAppointmentResponse(appointments []*repositor
 			UpdatedAt:    appt.Appointment.UpdatedAt,
 		}
 
-		// Build summary data
-		clinicID := appt.Clinic.ID.String()
-		if stats, exists := clinicMap[clinicID]; exists {
-			stats.Count++
-			clinicMap[clinicID] = stats
-		} else {
-			clinicMap[clinicID] = dto.ClinicStats{
-				Count: 1,
-				Name:  appt.Clinic.Name,
+		// Build summary data (only if clinic exists)
+		if appt.Clinic != nil {
+			clinicIDForStats := appt.Clinic.ID.String()
+			if stats, exists := clinicMap[clinicIDForStats]; exists {
+				stats.Count++
+				clinicMap[clinicIDForStats] = stats
+			} else {
+				clinicMap[clinicIDForStats] = dto.ClinicStats{
+					Count: 1,
+					Name:  appt.Clinic.Name,
+				}
 			}
 		}
 

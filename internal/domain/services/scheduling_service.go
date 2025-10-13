@@ -51,22 +51,26 @@ func (ss *SchedulingService) ScheduleAppointment(
 		return err
 	}
 
-	// Verify that the doctor exists
-	doctorExists, err := ss.doctorRepo.Exists(ctx, appointment.DoctorID)
-	if err != nil {
-		return err
-	}
-	if !doctorExists {
-		return entities.ErrDoctorNotFound
+	// Verify that the doctor exists (if specified)
+	if appointment.DoctorID != nil {
+		doctorExists, err := ss.doctorRepo.Exists(ctx, *appointment.DoctorID)
+		if err != nil {
+			return err
+		}
+		if !doctorExists {
+			return entities.ErrDoctorNotFound
+		}
 	}
 
-	// Verify that the unit exists
-	unitExists, err := ss.unitRepo.Exists(ctx, appointment.UnitID)
-	if err != nil {
-		return err
-	}
-	if !unitExists {
-		return entities.ErrUnitNotFound
+	// Verify that the unit exists (if specified)
+	if appointment.UnitID != nil {
+		unitExists, err := ss.unitRepo.Exists(ctx, *appointment.UnitID)
+		if err != nil {
+			return err
+		}
+		if !unitExists {
+			return entities.ErrUnitNotFound
+		}
 	}
 
 	// Create the appointment
