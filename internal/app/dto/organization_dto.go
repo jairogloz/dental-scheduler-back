@@ -88,10 +88,11 @@ type PatientCalendarDataDTO struct {
 // AppointmentCalendarDataDTO represents minimal appointment data for calendar view
 type AppointmentCalendarDataDTO struct {
 	ID           uuid.UUID               `json:"id"`
+	PatientID    *uuid.UUID              `json:"patient_id"`
 	Patient      *PatientCalendarDataDTO `json:"patient,omitempty"`
-	DoctorID     *uuid.UUID              `json:"doctor_id,omitempty"`
-	ClinicID     *uuid.UUID              `json:"clinic_id,omitempty"`
-	UnitID       *uuid.UUID              `json:"unit_id,omitempty"`
+	DoctorID     *uuid.UUID              `json:"doctor_id"`
+	ClinicID     *uuid.UUID              `json:"clinic_id"`
+	UnitID       *uuid.UUID              `json:"unit_id"`
 	StartTime    time.Time               `json:"start_time"`
 	EndTime      time.Time               `json:"end_time"`
 	Status       string                  `json:"status"`
@@ -232,6 +233,7 @@ func ToAppointmentCalendarDataDTO(appt *repositories.AppointmentCalendarData) *A
 
 	return &AppointmentCalendarDataDTO{
 		ID:           appt.ID,
+		PatientID:    appt.PatientID,
 		Patient:      patient,
 		DoctorID:     appt.DoctorID,
 		ClinicID:     appt.ClinicID,
