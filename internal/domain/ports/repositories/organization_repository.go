@@ -35,6 +35,7 @@ type AppointmentCalendarData struct {
 	Status           string     `json:"status"`
 	ServiceID        *string    `json:"service_id,omitempty"`
 	ServiceName      *string    `json:"service_name,omitempty"`
+	Notes            *string    `json:"notes,omitempty"`
 	IsFirstVisit     bool       `json:"is_first_visit"`
 }
 

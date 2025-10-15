@@ -98,6 +98,7 @@ type AppointmentCalendarDataDTO struct {
 	Status       string                  `json:"status"`
 	ServiceID    *string                 `json:"service_id,omitempty"`
 	ServiceName  *string                 `json:"service_name,omitempty"`
+	Notes        *string                 `json:"notes,omitempty"`
 	IsFirstVisit bool                    `json:"is_first_visit"`
 }
 
@@ -243,6 +244,7 @@ func ToAppointmentCalendarDataDTO(appt *repositories.AppointmentCalendarData) *A
 		Status:       appt.Status,
 		ServiceID:    appt.ServiceID,
 		ServiceName:  appt.ServiceName,
+		Notes:        appt.Notes,
 		IsFirstVisit: appt.IsFirstVisit,
 	}
 }

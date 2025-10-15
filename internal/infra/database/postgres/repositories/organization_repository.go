@@ -244,6 +244,7 @@ func (r *OrganizationPostgresRepository) getAppointmentsByOrganization(ctx conte
 			a.status,
 			a.service_id,
 			s.name as service_name,
+			a.notes,
 			CASE 
 				WHEN p.first_appointment_id = a.id THEN true
 				ELSE false
@@ -276,6 +277,7 @@ func (r *OrganizationPostgresRepository) getAppointmentsByOrganization(ctx conte
 		var patientFirstName sql.NullString
 		var patientLastName, patientPhone, patientEmail sql.NullString
 		var serviceID, serviceName sql.NullString
+		var notes sql.NullString
 
 		err := rows.Scan(
 			&appt.ID,
@@ -292,6 +294,7 @@ func (r *OrganizationPostgresRepository) getAppointmentsByOrganization(ctx conte
 			&appt.Status,
 			&serviceID,
 			&serviceName,
+			&notes,
 			&appt.IsFirstVisit,
 		)
 		if err != nil {
@@ -336,6 +339,9 @@ func (r *OrganizationPostgresRepository) getAppointmentsByOrganization(ctx conte
 		}
 		if serviceName.Valid {
 			appt.ServiceName = &serviceName.String
+		}
+		if notes.Valid {
+			appt.Notes = &notes.String
 		}
 
 		appointments = append(appointments, &appt)
