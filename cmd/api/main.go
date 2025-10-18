@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -111,6 +112,12 @@ func main() {
 	router.Use(middleware.Recovery(appLogger))
 	router.Use(middleware.CORS(cfg.CORS.AllowedOrigins))
 
+	// Load allowed origins from environment variable
+	allowedOrigins := strings.Split(getEnv("CORS_ALLOWED_ORIGINS", ""), ",")
+
+	// Use the custom CORS middleware
+	router.Use(middleware.CustomCORS(allowedOrigins))
+
 	// Setup routes
 	routes.SetupRoutes(
 		router,
@@ -160,4 +167,12 @@ func main() {
 	}
 
 	appLogger.Logger.Info("Server exited")
+}
+
+func getEnv(key, fallback string) string {
+	value, exists := os.LookupEnv(key)
+	if !exists {
+		return fallback
+	}
+	return value
 }

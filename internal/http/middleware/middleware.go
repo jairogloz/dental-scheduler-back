@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -475,4 +476,40 @@ func GetOrganizationFromContext(c *gin.Context) (*entities.Organization, bool) {
 		}
 	}
 	return nil, false
+}
+
+// CustomCORS is a middleware to handle dynamic CORS origins
+func CustomCORS(allowedOrigins []string) gin.HandlerFunc {
+	// Compile regex for dynamic subdomains
+	dynamicOriginRegex := regexp.MustCompile(`^https://dental-scheduler-front-[a-zA-Z0-9-]+\.vercel\.app$`)
+
+	return func(c *gin.Context) {
+		origin := c.Request.Header.Get("Origin")
+
+		// Check if the origin matches the dynamic pattern
+		if dynamicOriginRegex.MatchString(origin) {
+			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
+		} else {
+			// Check if the origin is in the allowed list
+			for _, o := range allowedOrigins {
+				if o == origin {
+					c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
+					break
+				}
+			}
+		}
+
+		// Set other CORS headers
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+
+		// Handle preflight requests
+		if c.Request.Method == http.MethodOptions {
+			c.AbortWithStatus(http.StatusOK)
+			return
+		}
+
+		c.Next()
+	}
 }
