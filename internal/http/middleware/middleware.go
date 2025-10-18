@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"regexp"
@@ -484,20 +485,27 @@ func CustomCORS(allowedOrigins []string) gin.HandlerFunc {
 	dynamicOriginRegex := regexp.MustCompile(`^https://dental-scheduler-front-[a-zA-Z0-9-]+\.vercel\.app$`)
 
 	return func(c *gin.Context) {
-		origin := c.Request.Header.Get("Origin")
+		origin := strings.TrimSpace(c.Request.Header.Get("Origin"))
+
+		regexMatched := dynamicOriginRegex.MatchString(origin)
+		explicitMatch := false
 
 		// Check if the origin matches the dynamic pattern
-		if dynamicOriginRegex.MatchString(origin) {
+		if regexMatched {
 			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
 		} else {
 			// Check if the origin is in the allowed list
 			for _, o := range allowedOrigins {
-				if o == origin {
+				if strings.TrimSpace(o) == origin {
+					explicitMatch = true
 					c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
 					break
 				}
 			}
 		}
+
+		// Log the origin evaluation for easier debugging during deployments
+		log.Printf("CustomCORS origin=%q regexMatch=%t explicitMatch=%t", origin, regexMatched, explicitMatch)
 
 		// Set other CORS headers
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
