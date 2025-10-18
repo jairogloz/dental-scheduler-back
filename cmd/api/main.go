@@ -110,7 +110,7 @@ func main() {
 	// Add middleware
 	router.Use(middleware.RequestLogger(appLogger))
 	router.Use(middleware.Recovery(appLogger))
-	router.Use(middleware.CORS(cfg.CORS.AllowedOrigins))
+	//router.Use(middleware.CORS(cfg.CORS.AllowedOrigins))
 
 	// Load allowed origins from environment variable
 	allowedOrigins := strings.Split(getEnv("CORS_ALLOWED_ORIGINS", ""), ",")
