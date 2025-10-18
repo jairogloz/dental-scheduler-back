@@ -35,6 +35,8 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
+	log.Println("Cors config:", cfg.CORS)
+
 	// Initialize logger
 	appLogger := logger.NewLogger(cfg.Log.Level)
 	appLogger.Logger.Info("Starting Dental Scheduler Backend API")
