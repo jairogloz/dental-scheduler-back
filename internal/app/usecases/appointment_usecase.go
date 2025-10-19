@@ -365,7 +365,7 @@ func (uc *AppointmentUseCase) GetAppointmentsByOrganization(ctx context.Context,
 
 	// Set default pagination
 	if req.Limit <= 0 {
-		req.Limit = 50 // Default limit
+		req.Limit = 2500 // Default limit
 	}
 	if req.Page <= 0 {
 		req.Page = 1 // Default page

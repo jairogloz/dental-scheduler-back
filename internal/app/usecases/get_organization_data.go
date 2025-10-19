@@ -49,7 +49,7 @@ func (uc *GetOrganizationDataUseCase) Execute(ctx context.Context, orgID uuid.UU
 	// Set default limit if not provided
 	limit := req.Limit
 	if limit == 0 {
-		limit = 500 // Default limit for appointments
+		limit = 2500 // Default limit for appointments
 	}
 
 	// Extend end date to include the entire end day
