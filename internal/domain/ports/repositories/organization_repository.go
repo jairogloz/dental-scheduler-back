@@ -37,6 +37,7 @@ type AppointmentCalendarData struct {
 	ServiceName      *string    `json:"service_name,omitempty"`
 	Notes            *string    `json:"notes,omitempty"`
 	IsFirstVisit     bool       `json:"is_first_visit"`
+	ClinicTimezone   string     `json:"-"` // IANA timezone from clinic, not exposed in JSON (used internally for conversion)
 }
 
 // OrganizationRepository defines the interface for organization data operations

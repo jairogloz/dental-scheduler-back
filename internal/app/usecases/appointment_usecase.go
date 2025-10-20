@@ -456,6 +456,23 @@ func (uc *AppointmentUseCase) buildAppointmentResponse(appointments []*repositor
 			clinicName = appt.Clinic.Name
 		}
 
+		// Convert times to clinic timezone and format as strings
+		startTime := appt.Appointment.StartTime
+		endTime := appt.Appointment.EndTime
+		if appt.Clinic != nil && appt.Clinic.Timezone != "" {
+			loc, err := time.LoadLocation(appt.Clinic.Timezone)
+			if err == nil {
+				startTime = appt.Appointment.StartTime.In(loc)
+				endTime = appt.Appointment.EndTime.In(loc)
+			}
+			// If error loading timezone, just use UTC times
+		}
+
+		// Format times as naive datetime strings (without timezone offset)
+		const layout = "2006-01-02T15:04:05"
+		startTimeStr := startTime.Format(layout)
+		endTimeStr := endTime.Format(layout)
+
 		var unitID *string
 		var unitName *string
 		if appt.Unit != nil {
@@ -472,8 +489,8 @@ func (uc *AppointmentUseCase) buildAppointmentResponse(appointments []*repositor
 			ClinicName:   clinicName,
 			UnitID:       unitID,
 			UnitName:     unitName,
-			StartTime:    appt.Appointment.StartTime,
-			EndTime:      appt.Appointment.EndTime,
+			StartTime:    startTimeStr,
+			EndTime:      endTimeStr,
 			Status:       string(appt.Appointment.Status),
 			ServiceID:    getStringPtr(appt.Appointment.ServiceID),
 			ServiceName:  getStringPtr(appt.ServiceName),

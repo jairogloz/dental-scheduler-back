@@ -102,8 +102,8 @@ type AppointmentListResponse struct {
 	ClinicName   string              `json:"clinic_name"`
 	UnitID       *string             `json:"unit_id,omitempty"`
 	UnitName     *string             `json:"unit_name,omitempty"`
-	StartTime    time.Time           `json:"start_time"`
-	EndTime      time.Time           `json:"end_time"`
+	StartTime    string              `json:"start_time"` // Converted to clinic timezone, format: "2006-01-02T15:04:05"
+	EndTime      string              `json:"end_time"`   // Converted to clinic timezone, format: "2006-01-02T15:04:05"
 	Status       string              `json:"status"`
 	ServiceID    string              `json:"service_id,omitempty"`
 	ServiceName  string              `json:"service_name,omitempty"`

@@ -120,7 +120,7 @@ func (r *OrganizationPostgresRepository) GetOrganizationData(ctx context.Context
 // getClinicsByOrganization retrieves all clinics for an organization
 func (r *OrganizationPostgresRepository) getClinicsByOrganization(ctx context.Context, orgID uuid.UUID) ([]*entities.Clinic, error) {
 	query := `
-		SELECT id, organization_id, name, address, phone, created_at, updated_at
+		SELECT id, organization_id, name, address, phone, timezone, created_at, updated_at
 		FROM clinics
 		WHERE organization_id = $1
 		ORDER BY name`
@@ -140,6 +140,7 @@ func (r *OrganizationPostgresRepository) getClinicsByOrganization(ctx context.Co
 			&clinic.Name,
 			&clinic.Address,
 			&clinic.Phone,
+			&clinic.Timezone,
 			&clinic.CreatedAt,
 			&clinic.UpdatedAt,
 		)
@@ -248,7 +249,8 @@ func (r *OrganizationPostgresRepository) getAppointmentsByOrganization(ctx conte
 			CASE 
 				WHEN p.first_appointment_id = a.id THEN true
 				ELSE false
-			END as is_first_visit
+			END as is_first_visit,
+			COALESCE(c.timezone, 'UTC') as clinic_timezone
 		FROM appointments a
 		LEFT JOIN units u ON a.unit_id = u.id
 		LEFT JOIN clinics c ON u.clinic_id = c.id
@@ -296,6 +298,7 @@ func (r *OrganizationPostgresRepository) getAppointmentsByOrganization(ctx conte
 			&serviceName,
 			&notes,
 			&appt.IsFirstVisit,
+			&appt.ClinicTimezone,
 		)
 		if err != nil {
 			return nil, err

@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"fmt"
 	"time"
 
 	"dental-scheduler-backend/internal/domain/entities"
@@ -93,8 +94,8 @@ type AppointmentCalendarDataDTO struct {
 	DoctorID     *uuid.UUID              `json:"doctor_id"`
 	ClinicID     *uuid.UUID              `json:"clinic_id"`
 	UnitID       *uuid.UUID              `json:"unit_id"`
-	StartTime    time.Time               `json:"start_time"`
-	EndTime      time.Time               `json:"end_time"`
+	StartTime    string                  `json:"start_time"` // Converted to clinic timezone, format: "2006-01-02T15:04:05"
+	EndTime      string                  `json:"end_time"`   // Converted to clinic timezone, format: "2006-01-02T15:04:05"
 	Status       string                  `json:"status"`
 	ServiceID    *string                 `json:"service_id,omitempty"`
 	ServiceName  *string                 `json:"service_name,omitempty"`
@@ -232,6 +233,26 @@ func ToAppointmentCalendarDataDTO(appt *repositories.AppointmentCalendarData) *A
 		}
 	}
 
+	// Convert appointment times from UTC to clinic timezone
+	startTime := appt.StartTime
+	endTime := appt.EndTime
+
+	if appt.ClinicTimezone != "" {
+		loc, err := time.LoadLocation(appt.ClinicTimezone)
+		if err != nil {
+			// If timezone is invalid, return error via panic to be caught upstream
+			// In production, you may want to log this and continue with UTC
+			panic(fmt.Sprintf("invalid timezone %q for appointment %s: %v", appt.ClinicTimezone, appt.ID, err))
+		}
+		startTime = appt.StartTime.In(loc)
+		endTime = appt.EndTime.In(loc)
+	}
+
+	// Format times as naive datetime strings (without timezone offset)
+	const layout = "2006-01-02T15:04:05"
+	startTimeStr := startTime.Format(layout)
+	endTimeStr := endTime.Format(layout)
+
 	return &AppointmentCalendarDataDTO{
 		ID:           appt.ID,
 		PatientID:    appt.PatientID,
@@ -239,8 +260,8 @@ func ToAppointmentCalendarDataDTO(appt *repositories.AppointmentCalendarData) *A
 		DoctorID:     appt.DoctorID,
 		ClinicID:     appt.ClinicID,
 		UnitID:       appt.UnitID,
-		StartTime:    appt.StartTime,
-		EndTime:      appt.EndTime,
+		StartTime:    startTimeStr,
+		EndTime:      endTimeStr,
 		Status:       appt.Status,
 		ServiceID:    appt.ServiceID,
 		ServiceName:  appt.ServiceName,
