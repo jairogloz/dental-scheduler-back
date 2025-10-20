@@ -94,8 +94,8 @@ type AppointmentCalendarDataDTO struct {
 	DoctorID     *uuid.UUID              `json:"doctor_id"`
 	ClinicID     *uuid.UUID              `json:"clinic_id"`
 	UnitID       *uuid.UUID              `json:"unit_id"`
-	StartTime    time.Time               `json:"start_time"`
-	EndTime      time.Time               `json:"end_time"`
+	StartTime    string                  `json:"start_time"` // Converted to clinic timezone, format: "2006-01-02T15:04:05"
+	EndTime      string                  `json:"end_time"`   // Converted to clinic timezone, format: "2006-01-02T15:04:05"
 	Status       string                  `json:"status"`
 	ServiceID    *string                 `json:"service_id,omitempty"`
 	ServiceName  *string                 `json:"service_name,omitempty"`
@@ -248,6 +248,11 @@ func ToAppointmentCalendarDataDTO(appt *repositories.AppointmentCalendarData) *A
 		endTime = appt.EndTime.In(loc)
 	}
 
+	// Format times as naive datetime strings (without timezone offset)
+	const layout = "2006-01-02T15:04:05"
+	startTimeStr := startTime.Format(layout)
+	endTimeStr := endTime.Format(layout)
+
 	return &AppointmentCalendarDataDTO{
 		ID:           appt.ID,
 		PatientID:    appt.PatientID,
@@ -255,8 +260,8 @@ func ToAppointmentCalendarDataDTO(appt *repositories.AppointmentCalendarData) *A
 		DoctorID:     appt.DoctorID,
 		ClinicID:     appt.ClinicID,
 		UnitID:       appt.UnitID,
-		StartTime:    startTime,
-		EndTime:      endTime,
+		StartTime:    startTimeStr,
+		EndTime:      endTimeStr,
 		Status:       appt.Status,
 		ServiceID:    appt.ServiceID,
 		ServiceName:  appt.ServiceName,
