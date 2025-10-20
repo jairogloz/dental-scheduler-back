@@ -456,6 +456,18 @@ func (uc *AppointmentUseCase) buildAppointmentResponse(appointments []*repositor
 			clinicName = appt.Clinic.Name
 		}
 
+		// Convert times to clinic timezone
+		startTime := appt.Appointment.StartTime
+		endTime := appt.Appointment.EndTime
+		if appt.Clinic != nil && appt.Clinic.Timezone != "" {
+			loc, err := time.LoadLocation(appt.Clinic.Timezone)
+			if err == nil {
+				startTime = appt.Appointment.StartTime.In(loc)
+				endTime = appt.Appointment.EndTime.In(loc)
+			}
+			// If error loading timezone, just use UTC times
+		}
+
 		var unitID *string
 		var unitName *string
 		if appt.Unit != nil {
@@ -472,8 +484,8 @@ func (uc *AppointmentUseCase) buildAppointmentResponse(appointments []*repositor
 			ClinicName:   clinicName,
 			UnitID:       unitID,
 			UnitName:     unitName,
-			StartTime:    appt.Appointment.StartTime,
-			EndTime:      appt.Appointment.EndTime,
+			StartTime:    startTime,
+			EndTime:      endTime,
 			Status:       string(appt.Appointment.Status),
 			ServiceID:    getStringPtr(appt.Appointment.ServiceID),
 			ServiceName:  getStringPtr(appt.ServiceName),

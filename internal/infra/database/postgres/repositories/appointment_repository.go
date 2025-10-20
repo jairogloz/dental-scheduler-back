@@ -407,7 +407,7 @@ func (r *AppointmentPostgresRepository) GetByOrganizationAndDateRange(ctx contex
 			p.id, p.first_name, p.last_name, p.phone, p.email, p.first_appointment_id, p.created_at, p.updated_at,
 			d.id, d.organization_id, d.user_id, d.name, d.specialty, d.email, d.phone, d.is_active, d.created_at, d.updated_at,
 			u.id, u.name, u.description, u.clinic_id, u.created_at, u.updated_at,
-			c.id, c.name, c.address, c.phone, c.email, c.organization_id, c.created_at, c.updated_at`
+			c.id, c.name, c.address, c.phone, c.email, c.timezone, c.organization_id, c.created_at, c.updated_at`
 
 	orderBy := " ORDER BY a.start_time ASC"
 
@@ -453,7 +453,7 @@ func (r *AppointmentPostgresRepository) GetByOrganizationAndDateRange(ctx contex
 		var unitCreatedAt, unitUpdatedAt sql.NullTime
 
 		// Nullable clinic fields
-		var clinicIDScan, clinicName, clinicAddress, clinicPhone, clinicEmail, clinicOrgID sql.NullString
+		var clinicIDScan, clinicName, clinicAddress, clinicPhone, clinicEmail, clinicTimezone, clinicOrgID sql.NullString
 		var clinicCreatedAt, clinicUpdatedAt sql.NullTime
 
 		err := rows.Scan(
@@ -504,6 +504,7 @@ func (r *AppointmentPostgresRepository) GetByOrganizationAndDateRange(ctx contex
 			&clinicAddress,
 			&clinicPhone,
 			&clinicEmail,
+			&clinicTimezone,
 			&clinicOrgID,
 			&clinicCreatedAt,
 			&clinicUpdatedAt,
@@ -651,6 +652,9 @@ func (r *AppointmentPostgresRepository) GetByOrganizationAndDateRange(ctx contex
 			}
 			if clinicEmail.Valid {
 				clinic.Email = &clinicEmail.String
+			}
+			if clinicTimezone.Valid {
+				clinic.Timezone = clinicTimezone.String
 			}
 			if clinicOrgID.Valid {
 				if parsedID, err := uuid.Parse(clinicOrgID.String); err == nil {

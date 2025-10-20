@@ -14,6 +14,7 @@ type Clinic struct {
 	Address        *string   `json:"address,omitempty" db:"address"`
 	Phone          *string   `json:"phone,omitempty" db:"phone"`
 	Email          *string   `json:"email,omitempty" db:"email"`
+	Timezone       string    `json:"timezone" db:"timezone"` // IANA timezone (e.g., "America/Mexico_City")
 	IsActive       bool      `json:"is_active" db:"is_active"`
 	CreatedAt      time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at" db:"updated_at"`

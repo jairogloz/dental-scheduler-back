@@ -24,14 +24,15 @@ func NewClinicPostgresRepository(db *sql.DB) repositories.ClinicRepository {
 // Create creates a new clinic
 func (r *ClinicPostgresRepository) Create(ctx context.Context, clinic *entities.Clinic) error {
 	query := `
-		INSERT INTO clinics (id, name, address, phone, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6)`
+		INSERT INTO clinics (id, name, address, phone, timezone, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)`
 
 	_, err := r.db.ExecContext(ctx, query,
 		clinic.ID,
 		clinic.Name,
 		clinic.Address,
 		clinic.Phone,
+		clinic.Timezone,
 		clinic.CreatedAt,
 		clinic.UpdatedAt,
 	)
@@ -46,7 +47,7 @@ func (r *ClinicPostgresRepository) Create(ctx context.Context, clinic *entities.
 // GetByID retrieves a clinic by its ID
 func (r *ClinicPostgresRepository) GetByID(ctx context.Context, id uuid.UUID) (*entities.Clinic, error) {
 	query := `
-		SELECT id, name, address, phone, created_at, updated_at
+		SELECT id, name, address, phone, timezone, created_at, updated_at
 		FROM clinics
 		WHERE id = $1`
 
@@ -56,6 +57,7 @@ func (r *ClinicPostgresRepository) GetByID(ctx context.Context, id uuid.UUID) (*
 		&clinic.Name,
 		&clinic.Address,
 		&clinic.Phone,
+		&clinic.Timezone,
 		&clinic.CreatedAt,
 		&clinic.UpdatedAt,
 	)
@@ -73,7 +75,7 @@ func (r *ClinicPostgresRepository) GetByID(ctx context.Context, id uuid.UUID) (*
 // GetAll retrieves all clinics
 func (r *ClinicPostgresRepository) GetAll(ctx context.Context) ([]*entities.Clinic, error) {
 	query := `
-		SELECT id, name, address, phone, created_at, updated_at
+		SELECT id, name, address, phone, timezone, created_at, updated_at
 		FROM clinics
 		ORDER BY name`
 
@@ -91,6 +93,7 @@ func (r *ClinicPostgresRepository) GetAll(ctx context.Context) ([]*entities.Clin
 			&clinic.Name,
 			&clinic.Address,
 			&clinic.Phone,
+			&clinic.Timezone,
 			&clinic.CreatedAt,
 			&clinic.UpdatedAt,
 		)
@@ -111,7 +114,7 @@ func (r *ClinicPostgresRepository) GetAll(ctx context.Context) ([]*entities.Clin
 func (r *ClinicPostgresRepository) Update(ctx context.Context, clinic *entities.Clinic) error {
 	query := `
 		UPDATE clinics
-		SET name = $2, address = $3, phone = $4, updated_at = $5
+		SET name = $2, address = $3, phone = $4, timezone = $5, updated_at = $6
 		WHERE id = $1`
 
 	result, err := r.db.ExecContext(ctx, query,
@@ -119,6 +122,7 @@ func (r *ClinicPostgresRepository) Update(ctx context.Context, clinic *entities.
 		clinic.Name,
 		clinic.Address,
 		clinic.Phone,
+		clinic.Timezone,
 		clinic.UpdatedAt,
 	)
 

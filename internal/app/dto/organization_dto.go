@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"fmt"
 	"time"
 
 	"dental-scheduler-backend/internal/domain/entities"
@@ -232,6 +233,21 @@ func ToAppointmentCalendarDataDTO(appt *repositories.AppointmentCalendarData) *A
 		}
 	}
 
+	// Convert appointment times from UTC to clinic timezone
+	startTime := appt.StartTime
+	endTime := appt.EndTime
+
+	if appt.ClinicTimezone != "" {
+		loc, err := time.LoadLocation(appt.ClinicTimezone)
+		if err != nil {
+			// If timezone is invalid, return error via panic to be caught upstream
+			// In production, you may want to log this and continue with UTC
+			panic(fmt.Sprintf("invalid timezone %q for appointment %s: %v", appt.ClinicTimezone, appt.ID, err))
+		}
+		startTime = appt.StartTime.In(loc)
+		endTime = appt.EndTime.In(loc)
+	}
+
 	return &AppointmentCalendarDataDTO{
 		ID:           appt.ID,
 		PatientID:    appt.PatientID,
@@ -239,8 +255,8 @@ func ToAppointmentCalendarDataDTO(appt *repositories.AppointmentCalendarData) *A
 		DoctorID:     appt.DoctorID,
 		ClinicID:     appt.ClinicID,
 		UnitID:       appt.UnitID,
-		StartTime:    appt.StartTime,
-		EndTime:      appt.EndTime,
+		StartTime:    startTime,
+		EndTime:      endTime,
 		Status:       appt.Status,
 		ServiceID:    appt.ServiceID,
 		ServiceName:  appt.ServiceName,
