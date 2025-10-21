@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"net/http"
-	"strings"
 
 	"dental-scheduler-backend/internal/app/dto"
 	"dental-scheduler-backend/internal/app/usecases"
@@ -92,10 +91,36 @@ func NewPatientHandler(patientUseCase *usecases.PatientUseCase, logger *logger.L
 
 // CreatePatient handles POST /patients
 func (h *PatientHandler) CreatePatient(c *gin.Context) {
-	var req dto.CreatePatientWithOrgRequest
+	// Get organization ID from context (set by auth middleware)
+	orgID, exists := middleware.GetOrganizationIDFromContext(c)
+	if !exists {
+		h.logger.Logger.Error("Organization ID not found in context")
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "UNAUTHORIZED",
+				"message": "Organization context required",
+			},
+		})
+		return
+	}
+
+	orgUUID, err := uuid.Parse(orgID)
+	if err != nil {
+		h.logger.Logger.Error("Invalid organization ID format in context")
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "INVALID_CONTEXT",
+				"message": "Invalid organization context",
+			},
+		})
+		return
+	}
 
 	// Bind JSON body
-	if err := c.ShouldBindJSON(&req.CreatePatientRequest); err != nil {
+	var req dto.CreatePatientRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		h.logger.Logger.WithError(err).Warn("Invalid JSON for CreatePatient")
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -107,27 +132,14 @@ func (h *PatientHandler) CreatePatient(c *gin.Context) {
 		return
 	}
 
-	// Bind query parameters (organization_id)
-	if err := c.ShouldBindQuery(&req); err != nil {
-		h.logger.Logger.WithError(err).Warn("Invalid query parameters for CreatePatient")
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error": gin.H{
-				"code":    "INVALID_QUERY_PARAMS",
-				"message": err.Error(),
-			},
-		})
-		return
-	}
-
 	h.logger.Logger.WithFields(map[string]interface{}{
 		"patient_first_name": req.FirstName,
 		"patient_last_name":  req.LastName,
-		"organization_id":    req.OrganizationIDStr,
+		"organization_id":    orgUUID,
 	}).Info("Creating new patient")
 
 	// Call use case
-	response, err := h.patientUseCase.CreatePatientWithOrganization(c.Request.Context(), &req)
+	response, err := h.patientUseCase.CreatePatientInOrganization(c.Request.Context(), &req, orgUUID)
 	if err != nil {
 		h.logger.Logger.WithError(err).Error("Failed to create patient")
 
@@ -138,18 +150,6 @@ func (h *PatientHandler) CreatePatient(c *gin.Context) {
 				"error": gin.H{
 					"code":    "ORGANIZATION_NOT_FOUND",
 					"message": "Organization not found",
-				},
-			})
-			return
-		}
-
-		// Check for UUID parsing errors
-		if strings.Contains(err.Error(), "invalid organization_id format") {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"success": false,
-				"error": gin.H{
-					"code":    "INVALID_ORGANIZATION_ID",
-					"message": "Invalid organization_id format. Must be a valid UUID.",
 				},
 			})
 			return
