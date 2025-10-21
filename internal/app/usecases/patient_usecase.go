@@ -79,6 +79,32 @@ func (uc *PatientUseCase) CreatePatientWithOrganization(ctx context.Context, req
 	return dto.ToPatientResponse(patient), nil
 }
 
+// CreatePatientInOrganization creates a new patient and links to organization
+func (uc *PatientUseCase) CreatePatientInOrganization(ctx context.Context, req *dto.CreatePatientRequest, orgID uuid.UUID) (*dto.PatientResponse, error) {
+	// Validate organization exists
+	exists, err := uc.patientRepo.OrganizationExists(ctx, orgID)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, entities.ErrOrganizationNotFound
+	}
+
+	// Create patient entity
+	patient := req.ToEntity()
+
+	if err := patient.Validate(); err != nil {
+		return nil, err
+	}
+
+	// Create patient with organization link in transaction
+	if err := uc.patientRepo.CreatePatientWithOrganization(ctx, patient, orgID); err != nil {
+		return nil, err
+	}
+
+	return dto.ToPatientResponse(patient), nil
+}
+
 // GetPatientByID retrieves a patient by its ID
 func (uc *PatientUseCase) GetPatientByID(ctx context.Context, id uuid.UUID) (*dto.PatientResponse, error) {
 	patient, err := uc.patientRepo.GetByID(ctx, id)

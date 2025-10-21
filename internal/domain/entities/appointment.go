@@ -16,6 +16,7 @@ const (
 	AppointmentStatusCancelled   AppointmentStatus = "cancelled"
 	AppointmentStatusRescheduled AppointmentStatus = "rescheduled"
 	AppointmentStatusNoShow      AppointmentStatus = "no-show"
+	AppointmentStatusWithError   AppointmentStatus = "with-error"
 )
 
 // Appointment represents an appointment entity
@@ -94,7 +95,8 @@ func IsValidAppointmentStatus(status AppointmentStatus) bool {
 		AppointmentStatusCompleted,
 		AppointmentStatusCancelled,
 		AppointmentStatusRescheduled,
-		AppointmentStatusNoShow:
+		AppointmentStatusNoShow,
+		AppointmentStatusWithError:
 		return true
 	default:
 		return false
