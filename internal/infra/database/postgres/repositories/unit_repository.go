@@ -213,3 +213,47 @@ func (r *UnitPostgresRepository) Exists(ctx context.Context, id uuid.UUID) (bool
 
 	return exists, nil
 }
+
+// GetUnitWithClinic retrieves a unit with its associated clinic information
+func (r *UnitPostgresRepository) GetUnitWithClinic(ctx context.Context, id uuid.UUID) (*entities.Unit, *entities.Clinic, error) {
+	query := `
+		SELECT 
+			u.id, u.clinic_id, u.name, u.description, u.is_active, u.created_at, u.updated_at,
+			c.id, c.organization_id, c.name, c.address, c.phone, c.email, c.timezone, c.created_at, c.updated_at
+		FROM units u
+		INNER JOIN clinics c ON u.clinic_id = c.id
+		WHERE u.id = $1`
+
+	var unit entities.Unit
+	var clinic entities.Clinic
+
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
+		// Unit fields
+		&unit.ID,
+		&unit.ClinicID,
+		&unit.Name,
+		&unit.Description,
+		&unit.IsActive,
+		&unit.CreatedAt,
+		&unit.UpdatedAt,
+		// Clinic fields
+		&clinic.ID,
+		&clinic.OrganizationID,
+		&clinic.Name,
+		&clinic.Address,
+		&clinic.Phone,
+		&clinic.Email,
+		&clinic.Timezone,
+		&clinic.CreatedAt,
+		&clinic.UpdatedAt,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil, entities.ErrUnitNotFound
+		}
+		return nil, nil, fmt.Errorf("failed to get unit with clinic: %w", err)
+	}
+
+	return &unit, &clinic, nil
+}

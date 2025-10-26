@@ -66,17 +66,42 @@ func (uc *AppointmentUseCase) CreateAppointment(ctx context.Context, orgID uuid.
 		return nil, entities.ErrDoctorNotFound
 	}
 
-	// Verify unit exists
-	unitExists, err := uc.unitRepo.Exists(ctx, req.UnitID)
+	// Get unit with clinic info (need timezone for conversion)
+	unit, clinic, err := uc.unitRepo.GetUnitWithClinic(ctx, req.UnitID)
 	if err != nil {
 		return nil, err
 	}
-	if !unitExists {
+	if unit == nil || clinic == nil {
 		return nil, entities.ErrUnitNotFound
 	}
 
-	// Create appointment entity
+	// Convert appointment times from clinic timezone to UTC
+	startTimeUTC := req.StartTime
+	endTimeUTC := req.EndTime
+
+	if clinic.Timezone != "" {
+		loc, err := time.LoadLocation(clinic.Timezone)
+		if err != nil {
+			return nil, fmt.Errorf("invalid clinic timezone %q: %w", clinic.Timezone, err)
+		}
+
+		// Parse the incoming times as being in the clinic's timezone
+		// The times are naive (no timezone info), so we interpret them in clinic's timezone
+		year, month, day := req.StartTime.Date()
+		hour, min, sec := req.StartTime.Clock()
+		startTimeInClinicTZ := time.Date(year, month, day, hour, min, sec, req.StartTime.Nanosecond(), loc)
+		startTimeUTC = startTimeInClinicTZ.UTC()
+
+		year, month, day = req.EndTime.Date()
+		hour, min, sec = req.EndTime.Clock()
+		endTimeInClinicTZ := time.Date(year, month, day, hour, min, sec, req.EndTime.Nanosecond(), loc)
+		endTimeUTC = endTimeInClinicTZ.UTC()
+	}
+
+	// Create appointment entity with UTC times
 	appointment := req.ToEntity()
+	appointment.StartTime = startTimeUTC
+	appointment.EndTime = endTimeUTC
 
 	// Create appointment directly in repository (no conflict checking)
 	if err := uc.appointmentRepo.Create(ctx, appointment); err != nil {
@@ -203,14 +228,51 @@ func (uc *AppointmentUseCase) UpdateAppointment(ctx context.Context, id uuid.UUI
 		}
 	}
 
+	// Get clinic timezone - use new unit if provided, otherwise use existing
+	var clinic *entities.Clinic
+	unitIDToCheck := existing.UnitID
 	if req.UnitID != nil {
-		unitExists, err := uc.unitRepo.Exists(ctx, *req.UnitID)
+		unitIDToCheck = req.UnitID
+	}
+
+	if unitIDToCheck != nil {
+		unit, clinicData, err := uc.unitRepo.GetUnitWithClinic(ctx, *unitIDToCheck)
 		if err != nil {
 			return nil, err
 		}
-		if !unitExists {
+		if unit == nil || clinicData == nil {
 			return nil, entities.ErrUnitNotFound
 		}
+		clinic = clinicData
+	}
+
+	// Convert times from clinic timezone to UTC if times are being updated
+	if req.StartTime != nil && clinic != nil && clinic.Timezone != "" {
+		loc, err := time.LoadLocation(clinic.Timezone)
+		if err != nil {
+			return nil, fmt.Errorf("invalid clinic timezone %q: %w", clinic.Timezone, err)
+		}
+
+		// Parse the incoming time as being in the clinic's timezone
+		year, month, day := req.StartTime.Date()
+		hour, min, sec := req.StartTime.Clock()
+		startTimeInClinicTZ := time.Date(year, month, day, hour, min, sec, req.StartTime.Nanosecond(), loc)
+		startTimeUTC := startTimeInClinicTZ.UTC()
+		req.StartTime = &startTimeUTC
+	}
+
+	if req.EndTime != nil && clinic != nil && clinic.Timezone != "" {
+		loc, err := time.LoadLocation(clinic.Timezone)
+		if err != nil {
+			return nil, fmt.Errorf("invalid clinic timezone %q: %w", clinic.Timezone, err)
+		}
+
+		// Parse the incoming time as being in the clinic's timezone
+		year, month, day := req.EndTime.Date()
+		hour, min, sec := req.EndTime.Clock()
+		endTimeInClinicTZ := time.Date(year, month, day, hour, min, sec, req.EndTime.Nanosecond(), loc)
+		endTimeUTC := endTimeInClinicTZ.UTC()
+		req.EndTime = &endTimeUTC
 	}
 
 	// Check if date/time is being changed to automatically set status to rescheduled

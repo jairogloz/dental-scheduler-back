@@ -30,4 +30,7 @@ type UnitRepository interface {
 
 	// Exists checks if a unit exists by its ID
 	Exists(ctx context.Context, id uuid.UUID) (bool, error)
+
+	// GetUnitWithClinic retrieves a unit with its associated clinic information
+	GetUnitWithClinic(ctx context.Context, id uuid.UUID) (*entities.Unit, *entities.Clinic, error)
 }
