@@ -17,6 +17,7 @@ type Doctor struct {
 	Email          *string    `json:"email,omitempty" db:"email"`
 	Phone          *string    `json:"phone,omitempty" db:"phone"`
 	DefaultUnitID  *uuid.UUID `json:"default_unit_id,omitempty" db:"default_unit_id"`
+	Color          string     `json:"color" db:"color"` // Hex color code (e.g., "#3B82F6")
 	IsActive       bool       `json:"is_active" db:"is_active"`
 	CreatedAt      time.Time  `json:"created_at" db:"created_at"`
 	UpdatedAt      time.Time  `json:"updated_at" db:"updated_at"`
@@ -36,6 +37,11 @@ func (d *Doctor) Validate() error {
 		if !isValidEmail(*d.Email) {
 			return ErrInvalidEmail
 		}
+	}
+
+	// Validate color format (hex color code)
+	if d.Color != "" && !isValidHexColor(d.Color) {
+		return ErrInvalidColor
 	}
 
 	return nil
@@ -65,6 +71,7 @@ func NewDoctor(name string, organizationID uuid.UUID) *Doctor {
 		ID:             uuid.New(),
 		OrganizationID: organizationID,
 		Name:           name,
+		Color:          "#3B82F6", // Default blue color
 		IsActive:       true,
 		CreatedAt:      now,
 		UpdatedAt:      now,
@@ -97,4 +104,10 @@ func (d *Doctor) IsValid() bool {
 func isValidEmail(email string) bool {
 	emailRegex := regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
 	return emailRegex.MatchString(email)
+}
+
+// isValidHexColor validates hex color format (e.g., "#3B82F6")
+func isValidHexColor(color string) bool {
+	hexColorRegex := regexp.MustCompile(`^#[0-9A-Fa-f]{6}$`)
+	return hexColorRegex.MatchString(color)
 }

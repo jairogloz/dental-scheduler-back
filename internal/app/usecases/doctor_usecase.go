@@ -174,6 +174,7 @@ func (uc *DoctorUseCase) GetDoctorsByOrganizationID(ctx context.Context, orgID u
 			ID:        doctorInfo.Doctor.ID.String(),
 			Name:      doctorInfo.Doctor.Name,
 			Specialty: doctorInfo.Doctor.Specialty,
+			Color:     doctorInfo.Doctor.Color,
 			OrgID:     doctorInfo.Doctor.OrganizationID.String(),
 			OrgName:   doctorInfo.OrgName,
 		}

@@ -16,6 +16,7 @@ type CreateDoctorRequest struct {
 	Phone         *string    `json:"phone,omitempty"`
 	DefaultUnitID *uuid.UUID `json:"default_unit_id,omitempty"`
 	IsActive      *bool      `json:"is_active,omitempty"`
+	Color         *string    `json:"color,omitempty"`
 }
 
 // UpdateDoctorRequest represents the request to update a doctor
@@ -26,6 +27,7 @@ type UpdateDoctorRequest struct {
 	Phone         *string    `json:"phone,omitempty"`
 	DefaultUnitID *uuid.UUID `json:"default_unit_id,omitempty"`
 	IsActive      *bool      `json:"is_active,omitempty"`
+	Color         *string    `json:"color,omitempty"`
 }
 
 // DoctorResponse represents the response for a doctor
@@ -37,6 +39,7 @@ type DoctorResponse struct {
 	Phone         *string    `json:"phone,omitempty"`
 	DefaultUnitID *uuid.UUID `json:"default_unit_id,omitempty"`
 	IsActive      bool       `json:"is_active"`
+	Color         string     `json:"color"`
 	CreatedAt     time.Time  `json:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at"`
 }
@@ -48,6 +51,11 @@ func (req *CreateDoctorRequest) ToEntity() *entities.Doctor {
 		isActive = *req.IsActive
 	}
 
+	color := "#3B82F6" // Default blue color
+	if req.Color != nil && *req.Color != "" {
+		color = *req.Color
+	}
+
 	return &entities.Doctor{
 		ID:            uuid.New(),
 		Name:          req.Name,
@@ -56,6 +64,7 @@ func (req *CreateDoctorRequest) ToEntity() *entities.Doctor {
 		Phone:         req.Phone,
 		DefaultUnitID: req.DefaultUnitID,
 		IsActive:      isActive,
+		Color:         color,
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
 	}
@@ -71,6 +80,7 @@ func ToDoctorResponse(d *entities.Doctor) *DoctorResponse {
 		Phone:         d.Phone,
 		DefaultUnitID: d.DefaultUnitID,
 		IsActive:      d.IsActive,
+		Color:         d.Color,
 		CreatedAt:     d.CreatedAt,
 		UpdatedAt:     d.UpdatedAt,
 	}
@@ -86,6 +96,9 @@ func (req *UpdateDoctorRequest) ToEntityUpdate(existing *entities.Doctor) *entit
 	if req.IsActive != nil {
 		existing.IsActive = *req.IsActive
 	}
+	if req.Color != nil && *req.Color != "" {
+		existing.Color = *req.Color
+	}
 	existing.UpdatedAt = time.Now()
 	return existing
 }
@@ -98,6 +111,7 @@ type DoctorWithOrgInfoResponse struct {
 	DefaultUnitID     *string `json:"default_unit_id,omitempty"`
 	DefaultClinicID   *string `json:"default_clinic_id,omitempty"`
 	DefaultClinicName *string `json:"default_clinic_name,omitempty"`
+	Color             string  `json:"color"`
 	OrgID             string  `json:"org_id"`
 	OrgName           string  `json:"org_name"`
 }

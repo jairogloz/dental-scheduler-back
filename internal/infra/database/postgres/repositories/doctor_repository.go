@@ -24,8 +24,8 @@ func NewDoctorPostgresRepository(db *sql.DB) repositories.DoctorRepository {
 // Create creates a new doctor
 func (r *DoctorPostgresRepository) Create(ctx context.Context, doctor *entities.Doctor) error {
 	query := `
-		INSERT INTO doctors (id, organization_id, user_id, name, specialty, email, phone, default_unit_id, is_active, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
+		INSERT INTO doctors (id, organization_id, user_id, name, specialty, email, phone, default_unit_id, color, is_active, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
 
 	_, err := r.db.ExecContext(ctx, query,
 		doctor.ID,
@@ -36,6 +36,7 @@ func (r *DoctorPostgresRepository) Create(ctx context.Context, doctor *entities.
 		doctor.Email,
 		doctor.Phone,
 		doctor.DefaultUnitID,
+		doctor.Color,
 		doctor.IsActive,
 		doctor.CreatedAt,
 		doctor.UpdatedAt,
@@ -51,7 +52,7 @@ func (r *DoctorPostgresRepository) Create(ctx context.Context, doctor *entities.
 // GetByID retrieves a doctor by its ID
 func (r *DoctorPostgresRepository) GetByID(ctx context.Context, id uuid.UUID) (*entities.Doctor, error) {
 	query := `
-		SELECT id, organization_id, user_id, name, specialty, email, phone, default_unit_id, is_active, created_at, updated_at
+		SELECT id, organization_id, user_id, name, specialty, email, phone, default_unit_id, color, is_active, created_at, updated_at
 		FROM doctors
 		WHERE id = $1`
 
@@ -65,6 +66,7 @@ func (r *DoctorPostgresRepository) GetByID(ctx context.Context, id uuid.UUID) (*
 		&doctor.Email,
 		&doctor.Phone,
 		&doctor.DefaultUnitID,
+		&doctor.Color,
 		&doctor.IsActive,
 		&doctor.CreatedAt,
 		&doctor.UpdatedAt,
@@ -83,7 +85,7 @@ func (r *DoctorPostgresRepository) GetByID(ctx context.Context, id uuid.UUID) (*
 // GetAll retrieves all doctors
 func (r *DoctorPostgresRepository) GetAll(ctx context.Context) ([]*entities.Doctor, error) {
 	query := `
-		SELECT id, organization_id, user_id, name, specialty, email, phone, default_unit_id, is_active, created_at, updated_at
+		SELECT id, organization_id, user_id, name, specialty, email, phone, default_unit_id, color, is_active, created_at, updated_at
 		FROM doctors
 		ORDER BY name`
 
@@ -105,6 +107,7 @@ func (r *DoctorPostgresRepository) GetAll(ctx context.Context) ([]*entities.Doct
 			&doctor.Email,
 			&doctor.Phone,
 			&doctor.DefaultUnitID,
+			&doctor.Color,
 			&doctor.IsActive,
 			&doctor.CreatedAt,
 			&doctor.UpdatedAt,
@@ -125,7 +128,7 @@ func (r *DoctorPostgresRepository) GetAll(ctx context.Context) ([]*entities.Doct
 // GetByEmail retrieves a doctor by email
 func (r *DoctorPostgresRepository) GetByEmail(ctx context.Context, email string) (*entities.Doctor, error) {
 	query := `
-		SELECT id, organization_id, user_id, name, specialty, email, phone, default_unit_id, is_active, created_at, updated_at
+		SELECT id, organization_id, user_id, name, specialty, email, phone, default_unit_id, color, is_active, created_at, updated_at
 		FROM doctors
 		WHERE email = $1`
 
@@ -139,6 +142,7 @@ func (r *DoctorPostgresRepository) GetByEmail(ctx context.Context, email string)
 		&doctor.Email,
 		&doctor.Phone,
 		&doctor.DefaultUnitID,
+		&doctor.Color,
 		&doctor.IsActive,
 		&doctor.CreatedAt,
 		&doctor.UpdatedAt,
@@ -158,13 +162,19 @@ func (r *DoctorPostgresRepository) GetByEmail(ctx context.Context, email string)
 func (r *DoctorPostgresRepository) Update(ctx context.Context, doctor *entities.Doctor) error {
 	query := `
 		UPDATE doctors
-		SET organization_id = $2, user_id = $3, name = $4, specialty = $5, email = $6, phone = $7, default_unit_id = $8, is_active = $9, updated_at = $10
+		SET organization_id = $2, user_id = $3, name = $4, specialty = $5, email = $6, phone = $7, default_unit_id = $8, color = $9, is_active = $10, updated_at = $11
 		WHERE id = $1`
 
 	result, err := r.db.ExecContext(ctx, query,
 		doctor.ID,
 		doctor.OrganizationID,
 		doctor.UserID,
+		doctor.Name,
+		doctor.Specialty,
+		doctor.Email,
+		doctor.Phone,
+		doctor.DefaultUnitID,
+		doctor.Color,
 		doctor.Name,
 		doctor.Specialty,
 		doctor.Email,
@@ -229,7 +239,7 @@ func (r *DoctorPostgresRepository) GetByOrganizationID(ctx context.Context, orgI
 	query := `
 		SELECT 
 			d.id, d.organization_id, d.user_id, d.name, d.specialty, d.email, d.phone, 
-			d.default_unit_id, d.is_active, d.created_at, d.updated_at,
+			d.default_unit_id, d.color, d.is_active, d.created_at, d.updated_at,
 			c.id as clinic_id, c.name as clinic_name, o.name as org_name,
 			CASE WHEN $2::UUID IS NOT NULL AND c.id = $2 THEN 0 ELSE 1 END as sort_priority
 		FROM doctors d
@@ -262,6 +272,7 @@ func (r *DoctorPostgresRepository) GetByOrganizationID(ctx context.Context, orgI
 			&doctor.Email,
 			&doctor.Phone,
 			&doctor.DefaultUnitID,
+			&doctor.Color,
 			&doctor.IsActive,
 			&doctor.CreatedAt,
 			&doctor.UpdatedAt,

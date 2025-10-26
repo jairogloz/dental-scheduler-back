@@ -27,6 +27,7 @@ var (
 	ErrInvalidDoctorName              = errors.New("doctor name is required")
 	ErrDoctorNotFound                 = errors.New("doctor not found")
 	ErrInvalidEmail                   = errors.New("invalid email format")
+	ErrInvalidColor                   = errors.New("invalid color format (must be hex color like #3B82F6)")
 	ErrDoctorUnitOrganizationMismatch = errors.New("doctor's default unit must belong to the same organization")
 
 	// Patient errors

@@ -192,7 +192,7 @@ func (r *OrganizationPostgresRepository) getUnitsByOrganization(ctx context.Cont
 // getDoctorsByOrganization retrieves all doctors for an organization
 func (r *OrganizationPostgresRepository) getDoctorsByOrganization(ctx context.Context, orgID uuid.UUID) ([]*entities.Doctor, error) {
 	query := `
-		SELECT id, organization_id, name, specialty, email, phone, default_unit_id, is_active, created_at, updated_at
+		SELECT id, organization_id, name, specialty, email, phone, default_unit_id, is_active, created_at, updated_at, color 
 		FROM doctors
 		WHERE organization_id = $1
 		ORDER BY name`
@@ -217,6 +217,7 @@ func (r *OrganizationPostgresRepository) getDoctorsByOrganization(ctx context.Co
 			&doctor.IsActive,
 			&doctor.CreatedAt,
 			&doctor.UpdatedAt,
+			&doctor.Color,
 		)
 		if err != nil {
 			return nil, err

@@ -73,6 +73,7 @@ type DoctorDTO struct {
 	Phone          *string    `json:"phone,omitempty"`
 	DefaultUnitID  *uuid.UUID `json:"default_unit_id,omitempty"`
 	IsActive       bool       `json:"is_active"`
+	Color          string     `json:"color"`
 	CreatedAt      time.Time  `json:"created_at"`
 	UpdatedAt      time.Time  `json:"updated_at"`
 }
@@ -199,6 +200,7 @@ func ToDoctorDTO(doctor *entities.Doctor) *DoctorDTO {
 		Phone:          doctor.Phone,
 		DefaultUnitID:  doctor.DefaultUnitID,
 		IsActive:       doctor.IsActive,
+		Color:          doctor.Color,
 		CreatedAt:      doctor.CreatedAt,
 		UpdatedAt:      doctor.UpdatedAt,
 	}
