@@ -128,6 +128,8 @@ type SupabaseClaims struct {
 	Roles []string `json:"roles,omitempty"`
 }
 
+const supabaseTokenTimeLeeway = 5 * time.Second
+
 // SupabaseAuth creates a middleware that validates Supabase JWT tokens
 // and enriches the context with full user profile from database
 func SupabaseAuth(logger *logger.Logger, userRepo repositories.UserRepository) gin.HandlerFunc {
@@ -226,8 +228,10 @@ func validateSupabaseToken(tokenString string, logger *logger.Logger) (*Supabase
 		"token_prefix":  tokenString[:min(20, len(tokenString))],
 	}).Debug("Validating JWT token")
 
+	parser := jwt.NewParser(jwt.WithLeeway(supabaseTokenTimeLeeway))
+
 	// Parse and validate the token using ParseWithClaims and raw JWT secret
-	token, err := jwt.ParseWithClaims(tokenString, &SupabaseClaims{}, func(token *jwt.Token) (interface{}, error) {
+	token, err := parser.ParseWithClaims(tokenString, &SupabaseClaims{}, func(token *jwt.Token) (interface{}, error) {
 		// Validate the signing method
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			logger.Logger.WithField("signing_method", token.Header["alg"]).Error("Unexpected signing method")
@@ -256,20 +260,22 @@ func validateSupabaseToken(tokenString string, logger *logger.Logger) (*Supabase
 
 	logger.Logger.WithField("subject", claims.Subject).Debug("Successfully parsed JWT claims")
 
+	now := time.Now()
+
 	// Check if token is expired using time comparison
-	if claims.ExpiresAt != nil && claims.ExpiresAt.Time.Before(time.Now()) {
+	if claims.ExpiresAt != nil && claims.ExpiresAt.Time.Before(now) {
 		logger.Logger.WithField("exp_time", claims.ExpiresAt.Time).Error("JWT token has expired")
 		return nil, fmt.Errorf("token is expired")
 	}
 
 	// Check if token is issued in the future
-	if claims.IssuedAt != nil && claims.IssuedAt.Time.After(time.Now()) {
+	if claims.IssuedAt != nil && claims.IssuedAt.Time.After(now.Add(supabaseTokenTimeLeeway)) {
 		logger.Logger.WithField("issued_at", claims.IssuedAt.Time).Error("JWT token used before issued")
 		return nil, fmt.Errorf("token used before issued")
 	}
 
 	// Check if token is not valid yet
-	if claims.NotBefore != nil && claims.NotBefore.Time.After(time.Now()) {
+	if claims.NotBefore != nil && claims.NotBefore.Time.After(now.Add(supabaseTokenTimeLeeway)) {
 		logger.Logger.WithField("not_before", claims.NotBefore.Time).Error("JWT token used before valid")
 		return nil, fmt.Errorf("token used before valid")
 	}
