@@ -236,7 +236,12 @@ func (req *UpdateAppointmentRequest) ToEntityUpdate(existing *entities.Appointme
 		existing.ServiceID = req.ServiceID
 	}
 	if req.Status != nil {
-		existing.Status = *req.Status
+		// If changing to needs-rescheduling, use the entity method to set timestamp
+		if *req.Status == entities.AppointmentStatusNeedsRescheduling {
+			existing.MoveToNeedsRescheduling()
+		} else {
+			existing.Status = *req.Status
+		}
 	}
 	if req.StartTime != nil {
 		existing.StartTime = *req.StartTime

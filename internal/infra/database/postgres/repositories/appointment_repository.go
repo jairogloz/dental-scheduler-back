@@ -211,7 +211,10 @@ func (r *AppointmentPostgresRepository) GetUpcoming(ctx context.Context) ([]*ent
 func (r *AppointmentPostgresRepository) Update(ctx context.Context, appointment *entities.Appointment) error {
 	query := `
 		UPDATE appointments
-		SET patient_id = $2, doctor_id = $3, unit_id = $4, service_id = $5, status = $6, start_time = $7, end_time = $8, notes = $9, updated_at = $10
+		SET patient_id = $2, doctor_id = $3, unit_id = $4, service_id = $5, status = $6, 
+		    start_time = $7, end_time = $8, notes = $9, 
+		    moved_to_needs_rescheduling_at = $10, rescheduled_to_appointment_id = $11, 
+		    cancellation_reason = $12, snoozed_until = $13, updated_at = $14
 		WHERE id = $1`
 
 	result, err := r.db.ExecContext(ctx, query,
@@ -224,6 +227,10 @@ func (r *AppointmentPostgresRepository) Update(ctx context.Context, appointment 
 		appointment.StartTime,
 		appointment.EndTime,
 		appointment.Notes,
+		appointment.MovedToNeedsReschedulingAt,
+		appointment.RescheduledToAppointmentID,
+		appointment.CancellationReason,
+		appointment.SnoozedUntil,
 		appointment.UpdatedAt,
 	)
 
