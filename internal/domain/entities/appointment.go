@@ -10,14 +10,14 @@ import (
 type AppointmentStatus string
 
 const (
-	AppointmentStatusScheduled           AppointmentStatus = "scheduled"
-	AppointmentStatusConfirmed           AppointmentStatus = "confirmed"
-	AppointmentStatusCompleted           AppointmentStatus = "completed"
-	AppointmentStatusCancelled           AppointmentStatus = "cancelled"
-	AppointmentStatusRescheduled         AppointmentStatus = "rescheduled"
-	AppointmentStatusRescheduleRequested AppointmentStatus = "reschedule-requested"
-	AppointmentStatusNoShow              AppointmentStatus = "no-show"
-	AppointmentStatusWithError           AppointmentStatus = "with-error"
+	AppointmentStatusScheduled       AppointmentStatus = "scheduled"
+	AppointmentStatusConfirmed       AppointmentStatus = "confirmed"
+	AppointmentStatusCompleted       AppointmentStatus = "completed"
+	AppointmentStatusCancelled       AppointmentStatus = "cancelled"
+	AppointmentStatusRescheduled     AppointmentStatus = "rescheduled"
+	AppointmentStatusNeedsReschedule AppointmentStatus = "needs-reschedule"
+	AppointmentStatusNoShow          AppointmentStatus = "no-show"
+	AppointmentStatusWithError       AppointmentStatus = "with-error"
 )
 
 // Appointment represents an appointment entity
@@ -96,7 +96,7 @@ func IsValidAppointmentStatus(status AppointmentStatus) bool {
 		AppointmentStatusCompleted,
 		AppointmentStatusCancelled,
 		AppointmentStatusRescheduled,
-		AppointmentStatusRescheduleRequested,
+		AppointmentStatusNeedsReschedule,
 		AppointmentStatusNoShow,
 		AppointmentStatusWithError:
 		return true
