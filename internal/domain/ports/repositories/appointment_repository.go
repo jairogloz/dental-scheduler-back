@@ -85,4 +85,7 @@ type AppointmentRepository interface {
 
 	// CancelWithReason cancels an appointment and stores the cancellation reason
 	CancelWithReason(ctx context.Context, appointmentID uuid.UUID, reason string) error
+
+	// SnoozeAppointment temporarily hides an appointment from the rescheduling queue until specified time
+	SnoozeAppointment(ctx context.Context, appointmentID uuid.UUID, until time.Time) error
 }

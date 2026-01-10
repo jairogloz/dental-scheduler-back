@@ -304,3 +304,9 @@ type RescheduleFromQueueRequest struct {
 	ServiceID string    `json:"service_id" binding:"required"`
 	Notes     *string   `json:"notes,omitempty"`
 }
+
+// SnoozeAppointmentRequest represents the request to snooze an appointment
+type SnoozeAppointmentRequest struct {
+	Number   int    `json:"number" binding:"required,min=1,max=10"`
+	TimeUnit string `json:"time_unit" binding:"required,oneof=days weeks months"`
+}

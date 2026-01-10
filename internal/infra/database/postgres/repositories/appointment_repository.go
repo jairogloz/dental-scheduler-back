@@ -700,7 +700,7 @@ func (r *AppointmentPostgresRepository) GetReschedulingQueue(ctx context.Context
 		LEFT JOIN services s ON a.service_id = s.id`
 
 	// WHERE conditions
-	whereConditions := ` WHERE a.status = 'needs-rescheduling' AND c.organization_id = $1`
+	whereConditions := ` WHERE a.status = 'needs-rescheduling' AND c.organization_id = $1 AND (a.snoozed_until IS NULL OR a.snoozed_until < NOW())`
 	params := []interface{}{filters.OrganizationID}
 	paramCount := 1
 
@@ -1065,6 +1065,31 @@ func (r *AppointmentPostgresRepository) CancelWithReason(ctx context.Context, ap
 	result, err := r.db.ExecContext(ctx, query, reason, appointmentID)
 	if err != nil {
 		return fmt.Errorf("failed to cancel appointment: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return entities.ErrAppointmentNotInQueue
+	}
+
+	return nil
+}
+
+// SnoozeAppointment temporarily hides an appointment from the rescheduling queue until specified time
+func (r *AppointmentPostgresRepository) SnoozeAppointment(ctx context.Context, appointmentID uuid.UUID, until time.Time) error {
+	query := `
+		UPDATE appointments
+		SET snoozed_until = $1,
+		    updated_at = NOW()
+		WHERE id = $2 AND status = 'needs-rescheduling'`
+
+	result, err := r.db.ExecContext(ctx, query, until, appointmentID)
+	if err != nil {
+		return fmt.Errorf("failed to snooze appointment: %w", err)
 	}
 
 	rowsAffected, err := result.RowsAffected()

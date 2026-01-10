@@ -47,6 +47,7 @@ var (
 	ErrAppointmentNotInQueue      = errors.New("appointment is not in rescheduling queue")
 	ErrInvalidStatusTransition    = errors.New("invalid appointment status transition")
 	ErrCancellationReasonRequired = errors.New("cancellation reason is required")
+	ErrUnauthorizedAccess         = errors.New("unauthorized access to resource")
 
 	// Doctor Availability errors
 	ErrInvalidAvailabilityTime = errors.New("invalid availability time")

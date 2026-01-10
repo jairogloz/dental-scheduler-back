@@ -34,6 +34,7 @@ type Appointment struct {
 	MovedToNeedsReschedulingAt *time.Time        `json:"moved_to_needs_rescheduling_at,omitempty" db:"moved_to_needs_rescheduling_at"`
 	RescheduledToAppointmentID *uuid.UUID        `json:"rescheduled_to_appointment_id,omitempty" db:"rescheduled_to_appointment_id"`
 	CancellationReason         *string           `json:"cancellation_reason,omitempty" db:"cancellation_reason"`
+	SnoozedUntil               *time.Time        `json:"snoozed_until,omitempty" db:"snoozed_until"`
 	MigrationSourceID          *string           `json:"migration_source_id,omitempty" db:"migration_source_id"`
 	CreatedAt                  time.Time         `json:"created_at" db:"created_at"`
 	UpdatedAt                  time.Time         `json:"updated_at" db:"updated_at"`
@@ -150,5 +151,22 @@ func (a *Appointment) CancelWithReason(reason string) {
 func (a *Appointment) LinkToRescheduledAppointment(newAppointmentID uuid.UUID) {
 	a.Status = AppointmentStatusRescheduled
 	a.RescheduledToAppointmentID = &newAppointmentID
+	a.UpdatedAt = time.Now()
+}
+
+// Snooze temporarily hides appointment from rescheduling queue until specified time
+func (a *Appointment) Snooze(until time.Time) {
+	a.SnoozedUntil = &until
+	a.UpdatedAt = time.Now()
+}
+
+// IsSnoozed checks if appointment is currently snoozed
+func (a *Appointment) IsSnoozed() bool {
+	return a.SnoozedUntil != nil && a.SnoozedUntil.After(time.Now())
+}
+
+// UnSnooze removes snooze from appointment, making it appear in queue
+func (a *Appointment) UnSnooze() {
+	a.SnoozedUntil = nil
 	a.UpdatedAt = time.Now()
 }

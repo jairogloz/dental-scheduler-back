@@ -85,6 +85,7 @@ func SetupRoutes(
 				appointments.PATCH("/:appointment_id", appointmentHandler.UpdateAppointment)             // Update appointment
 				appointments.POST("/:appointment_id/cancel", appointmentHandler.CancelFromQueue)         // Cancel from queue
 				appointments.POST("/:appointment_id/reschedule", appointmentHandler.RescheduleFromQueue) // Reschedule from queue
+				appointments.POST("/:appointment_id/snooze", appointmentHandler.SnoozeFromQueue)         // Snooze from queue
 				appointments.GET("/upcoming", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
 				appointments.GET("/:id", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
 				appointments.PUT("/:id", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })

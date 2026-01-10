@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"dental-scheduler-backend/internal/app/dto"
@@ -788,6 +789,128 @@ func (h *AppointmentHandler) RescheduleFromQueue(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    newAppointment,
+	})
+}
+
+// SnoozeFromQueue temporarily hides an appointment from the rescheduling queue
+func (h *AppointmentHandler) SnoozeFromQueue(c *gin.Context) {
+	// Get appointment ID from path
+	appointmentIDStr := c.Param("appointment_id")
+	appointmentID, err := uuid.Parse(appointmentIDStr)
+	if err != nil {
+		h.logger.Logger.WithError(err).Warn("Invalid appointment ID")
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "INVALID_APPOINTMENT_ID",
+				"message": "Invalid appointment ID format",
+			},
+		})
+		return
+	}
+
+	// Get organization from context
+	orgID, exists := middleware.GetOrganizationIDFromContext(c)
+	if !exists {
+		h.logger.Logger.Warn("SnoozeFromQueue called without organization context")
+		c.JSON(http.StatusForbidden, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "NO_ORGANIZATION",
+				"message": "User not associated with an organization",
+			},
+		})
+		return
+	}
+
+	// Parse organization ID
+	orgUUID, err := uuid.Parse(orgID)
+	if err != nil {
+		h.logger.Logger.WithError(err).Error("Invalid organization ID")
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "INVALID_ORGANIZATION",
+				"message": "Invalid organization ID",
+			},
+		})
+		return
+	}
+
+	// Bind request body
+	var req dto.SnoozeAppointmentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Logger.WithError(err).Warn("Invalid request body for SnoozeFromQueue")
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "INVALID_REQUEST",
+				"message": err.Error(),
+			},
+		})
+		return
+	}
+
+	h.logger.Logger.WithFields(map[string]interface{}{
+		"appointment_id": appointmentID,
+		"org_id":         orgID,
+		"number":         req.Number,
+		"time_unit":      req.TimeUnit,
+	}).Info("Snoozing appointment from queue")
+
+	// Execute use case
+	err = h.appointmentUseCase.SnoozeFromQueue(c.Request.Context(), appointmentID, orgUUID, &req)
+	if err != nil {
+		h.logger.Logger.WithError(err).Error("Failed to snooze appointment from queue")
+
+		// Handle specific domain errors
+		switch err {
+		case entities.ErrAppointmentNotFound:
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"error": gin.H{
+					"code":    "APPOINTMENT_NOT_FOUND",
+					"message": "Appointment not found",
+				},
+			})
+		case entities.ErrAppointmentNotInQueue:
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"error": gin.H{
+					"code":    "APPOINTMENT_NOT_IN_QUEUE",
+					"message": "Appointment is not in rescheduling queue",
+				},
+			})
+		case entities.ErrUnauthorizedAccess:
+			c.JSON(http.StatusForbidden, gin.H{
+				"success": false,
+				"error": gin.H{
+					"code":    "UNAUTHORIZED",
+					"message": "Access denied to this appointment",
+				},
+			})
+		default:
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"error": gin.H{
+					"code":    "INVALID_REQUEST",
+					"message": err.Error(),
+				},
+			})
+		}
+		return
+	}
+
+	// Log success
+	h.logger.Logger.WithFields(map[string]interface{}{
+		"appointment_id": appointmentID,
+		"duration":       fmt.Sprintf("%d %s", req.Number, req.TimeUnit),
+	}).Info("Successfully snoozed appointment from queue")
+
+	// Return success response
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Appointment snoozed successfully",
 	})
 }
 
