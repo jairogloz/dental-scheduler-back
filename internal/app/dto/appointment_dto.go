@@ -250,3 +250,57 @@ func (req *UpdateAppointmentRequest) ToEntityUpdate(existing *entities.Appointme
 	existing.UpdatedAt = time.Now()
 	return existing
 }
+
+// ReschedulingQueueRequest represents the request to get appointments in rescheduling queue
+type ReschedulingQueueRequest struct {
+	ClinicID *string `form:"clinic_id"`
+	DoctorID *string `form:"doctor_id"`
+	Search   string  `form:"search"`
+	Page     int     `form:"page"`
+	Limit    int     `form:"limit"`
+	Sort     string  `form:"sort"` // "oldest" or "newest"
+}
+
+// ReschedulingQueueItem represents an appointment in the rescheduling queue
+type ReschedulingQueueItem struct {
+	ID                         string              `json:"id"`
+	Patient                    *PatientListDataDTO `json:"patient"`
+	DoctorID                   string              `json:"doctor_id"`
+	DoctorName                 string              `json:"doctor_name"`
+	ClinicID                   string              `json:"clinic_id"`
+	ClinicName                 string              `json:"clinic_name"`
+	UnitID                     *string             `json:"unit_id,omitempty"`
+	UnitName                   *string             `json:"unit_name,omitempty"`
+	OriginalStart              string              `json:"original_start"` // ISO 8601
+	OriginalEnd                string              `json:"original_end"`   // ISO 8601
+	ServiceName                string              `json:"service_name,omitempty"`
+	Notes                      string              `json:"notes,omitempty"`
+	MovedToNeedsReschedulingAt string              `json:"moved_to_needs_rescheduling_at"` // ISO 8601
+	DaysInQueue                int                 `json:"days_in_queue"`
+	LastActionTimestamp        string              `json:"last_action_timestamp"` // ISO 8601
+}
+
+// ReschedulingQueueResponse represents the complete response for rescheduling queue listing
+type ReschedulingQueueResponse struct {
+	Items      []ReschedulingQueueItem `json:"items"`
+	Total      int                     `json:"total"`
+	Page       int                     `json:"page"`
+	Limit      int                     `json:"limit"`
+	TotalPages int                     `json:"total_pages"`
+}
+
+// CancelAppointmentRequest represents the request to cancel an appointment from the queue
+type CancelAppointmentRequest struct {
+	Reason string  `json:"reason" binding:"required"`
+	Notes  *string `json:"notes,omitempty"`
+}
+
+// RescheduleFromQueueRequest represents the request to reschedule an appointment from the queue
+type RescheduleFromQueueRequest struct {
+	DoctorID  uuid.UUID `json:"doctor_id" binding:"required"`
+	UnitID    uuid.UUID `json:"unit_id" binding:"required"`
+	StartTime time.Time `json:"start_time" binding:"required"`
+	EndTime   time.Time `json:"end_time" binding:"required"`
+	ServiceID string    `json:"service_id" binding:"required"`
+	Notes     *string   `json:"notes,omitempty"`
+}

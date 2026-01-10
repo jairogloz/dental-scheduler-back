@@ -18,6 +18,17 @@ type AppointmentFilters struct {
 	Limit    int
 }
 
+// ReschedulingQueueFilters represents filters for rescheduling queue queries
+type ReschedulingQueueFilters struct {
+	OrganizationID uuid.UUID
+	ClinicID       *uuid.UUID
+	DoctorID       *uuid.UUID
+	Search         string // Search in patient name, phone, email
+	Page           int
+	Limit          int
+	SortOldest     bool // true = ASC (oldest first), false = DESC (newest first)
+}
+
 // AppointmentWithDetails represents an appointment with all related entity details
 type AppointmentWithDetails struct {
 	Appointment *entities.Appointment
@@ -68,4 +79,10 @@ type AppointmentRepository interface {
 
 	// GetByOrganizationAndDateRange retrieves appointments for an organization within a date range with filters
 	GetByOrganizationAndDateRange(ctx context.Context, orgID uuid.UUID, startDate, endDate time.Time, filters AppointmentFilters) ([]*AppointmentWithDetails, int, error)
+
+	// GetReschedulingQueue retrieves appointments in rescheduling queue with pagination
+	GetReschedulingQueue(ctx context.Context, filters ReschedulingQueueFilters) ([]*AppointmentWithDetails, int, error)
+
+	// CancelWithReason cancels an appointment and stores the cancellation reason
+	CancelWithReason(ctx context.Context, appointmentID uuid.UUID, reason string) error
 }

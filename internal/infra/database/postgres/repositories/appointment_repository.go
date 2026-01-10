@@ -687,3 +687,394 @@ func (r *AppointmentPostgresRepository) GetByOrganizationAndDateRange(ctx contex
 
 	return appointments, totalCount, nil
 }
+
+// GetReschedulingQueue retrieves appointments in rescheduling queue with pagination
+func (r *AppointmentPostgresRepository) GetReschedulingQueue(ctx context.Context, filters repositories.ReschedulingQueueFilters) ([]*repositories.AppointmentWithDetails, int, error) {
+	// Base query with JOINs
+	baseQuery := `
+		FROM appointments a
+		LEFT JOIN patients p ON a.patient_id = p.id
+		LEFT JOIN doctors d ON a.doctor_id = d.id
+		LEFT JOIN units u ON a.unit_id = u.id
+		LEFT JOIN clinics c ON u.clinic_id = c.id
+		LEFT JOIN services s ON a.service_id = s.id`
+
+	// WHERE conditions
+	whereConditions := ` WHERE a.status = 'needs-rescheduling' AND c.organization_id = $1`
+	params := []interface{}{filters.OrganizationID}
+	paramCount := 1
+
+	// Add optional filters
+	if filters.ClinicID != nil {
+		paramCount++
+		whereConditions += fmt.Sprintf(" AND c.id = $%d", paramCount)
+		params = append(params, *filters.ClinicID)
+	}
+
+	if filters.DoctorID != nil {
+		paramCount++
+		whereConditions += fmt.Sprintf(" AND a.doctor_id = $%d", paramCount)
+		params = append(params, *filters.DoctorID)
+	}
+
+	// Add search filter (patient name, phone, or email)
+	if filters.Search != "" {
+		paramCount++
+		searchPattern := "%" + filters.Search + "%"
+		whereConditions += fmt.Sprintf(" AND (LOWER(p.first_name || ' ' || COALESCE(p.last_name, '')) LIKE LOWER($%d) OR LOWER(p.phone) LIKE LOWER($%d) OR LOWER(p.email) LIKE LOWER($%d))", paramCount, paramCount, paramCount)
+		params = append(params, searchPattern)
+	}
+
+	// Count query
+	countQuery := "SELECT COUNT(*) " + baseQuery + whereConditions
+	var totalCount int
+	err := r.db.QueryRowContext(ctx, countQuery, params...).Scan(&totalCount)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count rescheduling queue appointments: %w", err)
+	}
+
+	// Main query with all fields
+	selectFields := `
+		SELECT 
+			a.id, a.patient_id, a.doctor_id, a.unit_id, a.service_id, a.status, 
+			a.start_time, a.end_time, a.notes, a.moved_to_needs_rescheduling_at,
+			a.rescheduled_to_appointment_id, a.cancellation_reason, a.created_at, a.updated_at,
+			s.name as service_name,
+			p.id, p.first_name, p.last_name, p.phone, p.email, p.first_appointment_id, p.created_at, p.updated_at,
+			d.id, d.organization_id, d.user_id, d.name, d.specialty, d.email, d.phone, d.is_active, d.created_at, d.updated_at,
+			u.id, u.name, u.description, u.clinic_id, u.created_at, u.updated_at,
+			c.id, c.name, c.address, c.phone, c.email, c.timezone, c.organization_id, c.created_at, c.updated_at`
+
+	// Sort order
+	orderBy := " ORDER BY a.moved_to_needs_rescheduling_at"
+	if filters.SortOldest {
+		orderBy += " ASC" // Oldest first
+	} else {
+		orderBy += " DESC" // Newest first
+	}
+
+	// Add pagination
+	if filters.Limit > 0 {
+		offset := 0
+		if filters.Page > 1 {
+			offset = (filters.Page - 1) * filters.Limit
+		}
+		orderBy += fmt.Sprintf(" LIMIT %d OFFSET %d", filters.Limit, offset)
+	}
+
+	fullQuery := selectFields + " " + baseQuery + whereConditions + orderBy
+
+	rows, err := r.db.QueryContext(ctx, fullQuery, params...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to query rescheduling queue: %w", err)
+	}
+	defer rows.Close()
+
+	var appointments []*repositories.AppointmentWithDetails
+
+	for rows.Next() {
+		var appointment entities.Appointment
+		var status string
+		var serviceName sql.NullString
+
+		// Nullable appointment foreign keys
+		var patientID, doctorID, unitID sql.NullString
+
+		// New queue tracking fields
+		var movedToNeedsReschedulingAt sql.NullTime
+		var rescheduledToAppointmentID sql.NullString
+		var cancellationReason sql.NullString
+
+		// Nullable patient fields
+		var patientIDScan, patientFirstName, patientLastName, patientPhone, patientEmail sql.NullString
+		var patientFirstAppointmentID sql.NullString
+		var patientCreatedAt, patientUpdatedAt sql.NullTime
+
+		// Nullable doctor fields
+		var doctorIDScan, doctorOrgID, doctorUserID, doctorName, doctorSpecialty, doctorEmail, doctorPhone sql.NullString
+		var doctorIsActive sql.NullBool
+		var doctorCreatedAt, doctorUpdatedAt sql.NullTime
+
+		// Nullable unit fields
+		var unitIDScan, unitName, unitDescription, unitClinicID sql.NullString
+		var unitCreatedAt, unitUpdatedAt sql.NullTime
+
+		// Nullable clinic fields
+		var clinicIDScan, clinicName, clinicAddress, clinicPhone, clinicEmail, clinicTimezone, clinicOrgID sql.NullString
+		var clinicCreatedAt, clinicUpdatedAt sql.NullTime
+
+		err := rows.Scan(
+			// Appointment fields
+			&appointment.ID,
+			&patientID,
+			&doctorID,
+			&unitID,
+			&appointment.ServiceID,
+			&status,
+			&appointment.StartTime,
+			&appointment.EndTime,
+			&appointment.Notes,
+			&movedToNeedsReschedulingAt,
+			&rescheduledToAppointmentID,
+			&cancellationReason,
+			&appointment.CreatedAt,
+			&appointment.UpdatedAt,
+			// Service name
+			&serviceName,
+			// Patient fields
+			&patientIDScan,
+			&patientFirstName,
+			&patientLastName,
+			&patientPhone,
+			&patientEmail,
+			&patientFirstAppointmentID,
+			&patientCreatedAt,
+			&patientUpdatedAt,
+			// Doctor fields
+			&doctorIDScan,
+			&doctorOrgID,
+			&doctorUserID,
+			&doctorName,
+			&doctorSpecialty,
+			&doctorEmail,
+			&doctorPhone,
+			&doctorIsActive,
+			&doctorCreatedAt,
+			&doctorUpdatedAt,
+			// Unit fields
+			&unitIDScan,
+			&unitName,
+			&unitDescription,
+			&unitClinicID,
+			&unitCreatedAt,
+			&unitUpdatedAt,
+			// Clinic fields
+			&clinicIDScan,
+			&clinicName,
+			&clinicAddress,
+			&clinicPhone,
+			&clinicEmail,
+			&clinicTimezone,
+			&clinicOrgID,
+			&clinicCreatedAt,
+			&clinicUpdatedAt,
+		)
+
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to scan appointment row: %w", err)
+		}
+
+		// Convert nullable foreign keys
+		if patientID.Valid {
+			if parsedID, err := uuid.Parse(patientID.String); err == nil {
+				appointment.PatientID = &parsedID
+			}
+		}
+		if doctorID.Valid {
+			if parsedID, err := uuid.Parse(doctorID.String); err == nil {
+				appointment.DoctorID = &parsedID
+			}
+		}
+		if unitID.Valid {
+			if parsedID, err := uuid.Parse(unitID.String); err == nil {
+				appointment.UnitID = &parsedID
+			}
+		}
+
+		// Convert queue tracking fields
+		if movedToNeedsReschedulingAt.Valid {
+			appointment.MovedToNeedsReschedulingAt = &movedToNeedsReschedulingAt.Time
+		}
+		if rescheduledToAppointmentID.Valid {
+			if parsedID, err := uuid.Parse(rescheduledToAppointmentID.String); err == nil {
+				appointment.RescheduledToAppointmentID = &parsedID
+			}
+		}
+		if cancellationReason.Valid {
+			appointment.CancellationReason = &cancellationReason.String
+		}
+
+		appointment.Status = entities.AppointmentStatus(status)
+
+		var serviceNamePtr *string
+		if serviceName.Valid {
+			serviceNamePtr = &serviceName.String
+		}
+
+		// Build patient object
+		var patient *entities.Patient
+		if patientIDScan.Valid {
+			patient = &entities.Patient{}
+			if parsedID, err := uuid.Parse(patientIDScan.String); err == nil {
+				patient.ID = parsedID
+			}
+			if patientFirstName.Valid {
+				patient.FirstName = patientFirstName.String
+			}
+			if patientLastName.Valid {
+				patient.LastName = &patientLastName.String
+			}
+			if patientPhone.Valid {
+				patient.Phone = &patientPhone.String
+			}
+			if patientEmail.Valid {
+				patient.Email = &patientEmail.String
+			}
+			if patientFirstAppointmentID.Valid {
+				if parsedID, err := uuid.Parse(patientFirstAppointmentID.String); err == nil {
+					patient.FirstAppointmentID = &parsedID
+				}
+			}
+			if patientCreatedAt.Valid {
+				patient.CreatedAt = patientCreatedAt.Time
+			}
+			if patientUpdatedAt.Valid {
+				patient.UpdatedAt = patientUpdatedAt.Time
+			}
+		}
+
+		// Build doctor object
+		var doctor *entities.Doctor
+		if doctorIDScan.Valid {
+			doctor = &entities.Doctor{}
+			if parsedID, err := uuid.Parse(doctorIDScan.String); err == nil {
+				doctor.ID = parsedID
+			}
+			if doctorOrgID.Valid {
+				if parsedID, err := uuid.Parse(doctorOrgID.String); err == nil {
+					doctor.OrganizationID = parsedID
+				}
+			}
+			if doctorUserID.Valid {
+				if parsedID, err := uuid.Parse(doctorUserID.String); err == nil {
+					doctor.UserID = &parsedID
+				}
+			}
+			if doctorName.Valid {
+				doctor.Name = doctorName.String
+			}
+			if doctorSpecialty.Valid {
+				doctor.Specialty = &doctorSpecialty.String
+			}
+			if doctorEmail.Valid {
+				doctor.Email = &doctorEmail.String
+			}
+			if doctorPhone.Valid {
+				doctor.Phone = &doctorPhone.String
+			}
+			if doctorIsActive.Valid {
+				doctor.IsActive = doctorIsActive.Bool
+			}
+			if doctorCreatedAt.Valid {
+				doctor.CreatedAt = doctorCreatedAt.Time
+			}
+			if doctorUpdatedAt.Valid {
+				doctor.UpdatedAt = doctorUpdatedAt.Time
+			}
+		}
+
+		// Build unit object
+		var unit *entities.Unit
+		if unitIDScan.Valid {
+			unit = &entities.Unit{}
+			if parsedID, err := uuid.Parse(unitIDScan.String); err == nil {
+				unit.ID = parsedID
+			}
+			if unitName.Valid {
+				unit.Name = unitName.String
+			}
+			if unitDescription.Valid {
+				unit.Description = &unitDescription.String
+			}
+			if unitClinicID.Valid {
+				if parsedID, err := uuid.Parse(unitClinicID.String); err == nil {
+					unit.ClinicID = parsedID
+				}
+			}
+			if unitCreatedAt.Valid {
+				unit.CreatedAt = unitCreatedAt.Time
+			}
+			if unitUpdatedAt.Valid {
+				unit.UpdatedAt = unitUpdatedAt.Time
+			}
+		}
+
+		// Build clinic object
+		var clinic *entities.Clinic
+		if clinicIDScan.Valid {
+			clinic = &entities.Clinic{}
+			if parsedID, err := uuid.Parse(clinicIDScan.String); err == nil {
+				clinic.ID = parsedID
+			}
+			if clinicName.Valid {
+				clinic.Name = clinicName.String
+			}
+			if clinicAddress.Valid {
+				clinic.Address = &clinicAddress.String
+			}
+			if clinicPhone.Valid {
+				clinic.Phone = &clinicPhone.String
+			}
+			if clinicEmail.Valid {
+				clinic.Email = &clinicEmail.String
+			}
+			if clinicTimezone.Valid {
+				clinic.Timezone = clinicTimezone.String
+			}
+			if clinicOrgID.Valid {
+				if parsedID, err := uuid.Parse(clinicOrgID.String); err == nil {
+					clinic.OrganizationID = parsedID
+				}
+			}
+			if clinicCreatedAt.Valid {
+				clinic.CreatedAt = clinicCreatedAt.Time
+			}
+			if clinicUpdatedAt.Valid {
+				clinic.UpdatedAt = clinicUpdatedAt.Time
+			}
+		}
+
+		appointmentWithDetails := &repositories.AppointmentWithDetails{
+			Appointment: &appointment,
+			Patient:     patient,
+			Doctor:      doctor,
+			Unit:        unit,
+			Clinic:      clinic,
+			ServiceName: serviceNamePtr,
+		}
+
+		appointments = append(appointments, appointmentWithDetails)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("error iterating over rescheduling queue rows: %w", err)
+	}
+
+	return appointments, totalCount, nil
+}
+
+// CancelWithReason cancels an appointment and stores the cancellation reason
+func (r *AppointmentPostgresRepository) CancelWithReason(ctx context.Context, appointmentID uuid.UUID, reason string) error {
+	query := `
+		UPDATE appointments
+		SET status = 'cancelled',
+		    cancellation_reason = $1,
+		    updated_at = NOW()
+		WHERE id = $2 AND status = 'needs-rescheduling'`
+
+	result, err := r.db.ExecContext(ctx, query, reason, appointmentID)
+	if err != nil {
+		return fmt.Errorf("failed to cancel appointment: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return entities.ErrAppointmentNotInQueue
+	}
+
+	return nil
+}

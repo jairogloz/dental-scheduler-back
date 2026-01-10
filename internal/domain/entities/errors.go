@@ -35,15 +35,18 @@ var (
 	ErrPatientNotFound    = errors.New("patient not found")
 
 	// Appointment errors
-	ErrInvalidPatientID         = errors.New("patient ID is required")
-	ErrInvalidDoctorID          = errors.New("doctor ID is required")
-	ErrInvalidUnitID            = errors.New("unit ID is required")
-	ErrInvalidAppointmentTime   = errors.New("invalid appointment time")
-	ErrEndTimeBeforeStartTime   = errors.New("end time must be after start time")
-	ErrAppointmentNotFound      = errors.New("appointment not found")
-	ErrAppointmentConflict      = errors.New("appointment conflicts with existing appointment")
-	ErrPastAppointmentTime      = errors.New("appointment time cannot be in the past")
-	ErrInvalidAppointmentStatus = errors.New("invalid appointment status")
+	ErrInvalidPatientID           = errors.New("patient ID is required")
+	ErrInvalidDoctorID            = errors.New("doctor ID is required")
+	ErrInvalidUnitID              = errors.New("unit ID is required")
+	ErrInvalidAppointmentTime     = errors.New("invalid appointment time")
+	ErrEndTimeBeforeStartTime     = errors.New("end time must be after start time")
+	ErrAppointmentNotFound        = errors.New("appointment not found")
+	ErrAppointmentConflict        = errors.New("appointment conflicts with existing appointment")
+	ErrPastAppointmentTime        = errors.New("appointment time cannot be in the past")
+	ErrInvalidAppointmentStatus   = errors.New("invalid appointment status")
+	ErrAppointmentNotInQueue      = errors.New("appointment is not in rescheduling queue")
+	ErrInvalidStatusTransition    = errors.New("invalid appointment status transition")
+	ErrCancellationReasonRequired = errors.New("cancellation reason is required")
 
 	// Doctor Availability errors
 	ErrInvalidAvailabilityTime = errors.New("invalid availability time")

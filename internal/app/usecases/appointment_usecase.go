@@ -620,3 +620,359 @@ func getStringPtrFromUUID(u *uuid.UUID) *string {
 	str := u.String()
 	return &str
 }
+
+// GetReschedulingQueue retrieves appointments in rescheduling queue with pagination
+func (uc *AppointmentUseCase) GetReschedulingQueue(ctx context.Context, orgID uuid.UUID, req *dto.ReschedulingQueueRequest) (*dto.ReschedulingQueueResponse, error) {
+	// Set defaults
+	if req.Page <= 0 {
+		req.Page = 1
+	}
+	if req.Limit <= 0 {
+		req.Limit = 20
+	}
+	if req.Limit > 100 {
+		req.Limit = 100 // Max limit
+	}
+
+	// Determine sort order
+	sortOldest := true // Default to oldest first
+	if req.Sort == "newest" {
+		sortOldest = false
+	}
+
+	// Build filters
+	filters := repositories.ReschedulingQueueFilters{
+		OrganizationID: orgID,
+		Search:         req.Search,
+		Page:           req.Page,
+		Limit:          req.Limit,
+		SortOldest:     sortOldest,
+	}
+
+	// Parse optional clinic ID
+	if req.ClinicID != nil && *req.ClinicID != "" {
+		clinicID, err := uuid.Parse(*req.ClinicID)
+		if err != nil {
+			return nil, fmt.Errorf("invalid clinic_id: %w", err)
+		}
+		filters.ClinicID = &clinicID
+	}
+
+	// Parse optional doctor ID
+	if req.DoctorID != nil && *req.DoctorID != "" {
+		doctorID, err := uuid.Parse(*req.DoctorID)
+		if err != nil {
+			return nil, fmt.Errorf("invalid doctor_id: %w", err)
+		}
+		filters.DoctorID = &doctorID
+	}
+
+	// Fetch appointments from repository
+	appointments, totalCount, err := uc.appointmentRepo.GetReschedulingQueue(ctx, filters)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get rescheduling queue: %w", err)
+	}
+
+	// Convert to DTOs
+	items := make([]dto.ReschedulingQueueItem, 0, len(appointments))
+	for _, appt := range appointments {
+		// Build patient DTO
+		var patientDTO *dto.PatientListDataDTO
+		if appt.Patient != nil {
+			phone := ""
+			if appt.Patient.Phone != nil {
+				phone = *appt.Patient.Phone
+			}
+			email := ""
+			if appt.Patient.Email != nil {
+				email = *appt.Patient.Email
+			}
+			lastName := ""
+			if appt.Patient.LastName != nil {
+				lastName = *appt.Patient.LastName
+			}
+
+			patientDTO = &dto.PatientListDataDTO{
+				ID:        appt.Patient.ID.String(),
+				FirstName: appt.Patient.FirstName,
+				LastName:  &lastName,
+				Phone:     &phone,
+				Email:     &email,
+			}
+		}
+
+		// Get clinic timezone for time conversion
+		timezone := "UTC"
+		if appt.Clinic != nil && appt.Clinic.Timezone != "" {
+			timezone = appt.Clinic.Timezone
+		}
+
+		// Load timezone location
+		loc, err := time.LoadLocation(timezone)
+		if err != nil {
+			loc = time.UTC
+		}
+
+		// Convert times to clinic timezone
+		startTimeInClinicTZ := appt.Appointment.StartTime.In(loc)
+		endTimeInClinicTZ := appt.Appointment.EndTime.In(loc)
+
+		// Calculate days in queue
+		daysInQueue := 0
+		if appt.Appointment.MovedToNeedsReschedulingAt != nil {
+			daysInQueue = int(time.Since(*appt.Appointment.MovedToNeedsReschedulingAt).Hours() / 24)
+		}
+
+		// Last action timestamp (use moved_to_needs_rescheduling_at or updated_at)
+		lastActionTimestamp := appt.Appointment.UpdatedAt
+		if appt.Appointment.MovedToNeedsReschedulingAt != nil {
+			lastActionTimestamp = *appt.Appointment.MovedToNeedsReschedulingAt
+		}
+
+		item := dto.ReschedulingQueueItem{
+			ID:                         appt.Appointment.ID.String(),
+			Patient:                    patientDTO,
+			DoctorID:                   "",
+			DoctorName:                 "",
+			ClinicID:                   "",
+			ClinicName:                 "",
+			OriginalStart:              startTimeInClinicTZ.Format(time.RFC3339),
+			OriginalEnd:                endTimeInClinicTZ.Format(time.RFC3339),
+			ServiceName:                "",
+			Notes:                      "",
+			MovedToNeedsReschedulingAt: "",
+			DaysInQueue:                daysInQueue,
+			LastActionTimestamp:        lastActionTimestamp.Format(time.RFC3339),
+		}
+
+		// Add doctor info
+		if appt.Doctor != nil {
+			item.DoctorID = appt.Doctor.ID.String()
+			item.DoctorName = appt.Doctor.Name
+		}
+
+		// Add clinic info
+		if appt.Clinic != nil {
+			item.ClinicID = appt.Clinic.ID.String()
+			item.ClinicName = appt.Clinic.Name
+		}
+
+		// Add unit info
+		if appt.Unit != nil {
+			unitID := appt.Unit.ID.String()
+			item.UnitID = &unitID
+			unitName := appt.Unit.Name
+			item.UnitName = &unitName
+		}
+
+		// Add service name
+		if appt.ServiceName != nil {
+			item.ServiceName = *appt.ServiceName
+		}
+
+		// Add notes
+		if appt.Appointment.Notes != nil {
+			item.Notes = *appt.Appointment.Notes
+		}
+
+		// Add moved timestamp
+		if appt.Appointment.MovedToNeedsReschedulingAt != nil {
+			item.MovedToNeedsReschedulingAt = appt.Appointment.MovedToNeedsReschedulingAt.Format(time.RFC3339)
+		}
+
+		items = append(items, item)
+	}
+
+	// Calculate total pages
+	totalPages := (totalCount + req.Limit - 1) / req.Limit
+
+	return &dto.ReschedulingQueueResponse{
+		Items:      items,
+		Total:      totalCount,
+		Page:       req.Page,
+		Limit:      req.Limit,
+		TotalPages: totalPages,
+	}, nil
+}
+
+// CancelFromQueue cancels an appointment from the rescheduling queue
+func (uc *AppointmentUseCase) CancelFromQueue(ctx context.Context, appointmentID uuid.UUID, orgID uuid.UUID, req *dto.CancelAppointmentRequest) error {
+	// Get appointment to verify it exists and belongs to organization
+	appointment, err := uc.appointmentRepo.GetByID(ctx, appointmentID)
+	if err != nil {
+		return err
+	}
+	if appointment == nil {
+		return entities.ErrAppointmentNotFound
+	}
+
+	// Verify appointment status is needs-rescheduling
+	if appointment.Status != entities.AppointmentStatusNeedsRescheduling {
+		return entities.ErrAppointmentNotInQueue
+	}
+
+	// Verify appointment belongs to organization (via unit -> clinic -> organization)
+	if appointment.UnitID != nil {
+		unit, clinic, err := uc.unitRepo.GetUnitWithClinic(ctx, *appointment.UnitID)
+		if err != nil {
+			return err
+		}
+		if unit == nil || clinic == nil || clinic.OrganizationID != orgID {
+			return fmt.Errorf("appointment does not belong to organization")
+		}
+	}
+
+	// Combine reason and notes
+	fullReason := req.Reason
+	if req.Notes != nil && *req.Notes != "" {
+		fullReason = fmt.Sprintf("%s - %s", req.Reason, *req.Notes)
+	}
+
+	// Cancel with reason
+	return uc.appointmentRepo.CancelWithReason(ctx, appointmentID, fullReason)
+}
+
+// RescheduleFromQueue reschedules an appointment from the queue by creating a new one
+func (uc *AppointmentUseCase) RescheduleFromQueue(ctx context.Context, appointmentID uuid.UUID, orgID uuid.UUID, req *dto.RescheduleFromQueueRequest) (*dto.AppointmentResponse, error) {
+	// Get original appointment
+	original, err := uc.appointmentRepo.GetByID(ctx, appointmentID)
+	if err != nil {
+		return nil, err
+	}
+	if original == nil {
+		return nil, entities.ErrAppointmentNotFound
+	}
+
+	// Verify appointment status is needs-rescheduling
+	if original.Status != entities.AppointmentStatusNeedsRescheduling {
+		return nil, entities.ErrAppointmentNotInQueue
+	}
+
+	// Verify appointment belongs to organization
+	if original.UnitID != nil {
+		unit, clinic, err := uc.unitRepo.GetUnitWithClinic(ctx, *original.UnitID)
+		if err != nil {
+			return nil, err
+		}
+		if unit == nil || clinic == nil || clinic.OrganizationID != orgID {
+			return nil, fmt.Errorf("appointment does not belong to organization")
+		}
+	}
+
+	// Verify entities exist
+	doctorExists, err := uc.doctorRepo.Exists(ctx, req.DoctorID)
+	if err != nil {
+		return nil, err
+	}
+	if !doctorExists {
+		return nil, entities.ErrDoctorNotFound
+	}
+
+	// Get unit with clinic for timezone conversion
+	unit, clinic, err := uc.unitRepo.GetUnitWithClinic(ctx, req.UnitID)
+	if err != nil {
+		return nil, err
+	}
+	if unit == nil || clinic == nil {
+		return nil, entities.ErrUnitNotFound
+	}
+
+	// Verify new unit belongs to same organization
+	if clinic.OrganizationID != orgID {
+		return nil, fmt.Errorf("unit does not belong to organization")
+	}
+
+	// Convert times from clinic timezone to UTC
+	startTimeUTC := req.StartTime
+	endTimeUTC := req.EndTime
+
+	if clinic.Timezone != "" {
+		loc, err := time.LoadLocation(clinic.Timezone)
+		if err != nil {
+			return nil, fmt.Errorf("invalid clinic timezone %q: %w", clinic.Timezone, err)
+		}
+
+		// Parse times as being in clinic's timezone
+		year, month, day := req.StartTime.Date()
+		hour, min, sec := req.StartTime.Clock()
+		startTimeInClinicTZ := time.Date(year, month, day, hour, min, sec, req.StartTime.Nanosecond(), loc)
+		startTimeUTC = startTimeInClinicTZ.UTC()
+
+		year, month, day = req.EndTime.Date()
+		hour, min, sec = req.EndTime.Clock()
+		endTimeInClinicTZ := time.Date(year, month, day, hour, min, sec, req.EndTime.Nanosecond(), loc)
+		endTimeUTC = endTimeInClinicTZ.UTC()
+	}
+
+	// Validate times
+	if endTimeUTC.Before(startTimeUTC) || endTimeUTC.Equal(startTimeUTC) {
+		return nil, fmt.Errorf("end time must be after start time")
+	}
+
+	// Create new appointment (will be saved in transaction)
+	newAppointment := &entities.Appointment{
+		ID:        uuid.New(),
+		PatientID: original.PatientID,
+		DoctorID:  &req.DoctorID,
+		UnitID:    &req.UnitID,
+		ServiceID: &req.ServiceID,
+		Status:    entities.AppointmentStatusScheduled,
+		StartTime: startTimeUTC,
+		EndTime:   endTimeUTC,
+		Notes:     req.Notes,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	// Validate the new appointment
+	if err := newAppointment.Validate(); err != nil {
+		return nil, err
+	}
+
+	// Check for conflicts with existing appointments
+	hasConflict, err := uc.appointmentRepo.CheckConflict(
+		ctx,
+		req.DoctorID,
+		req.UnitID,
+		startTimeUTC,
+		endTimeUTC,
+		nil, // No appointment to exclude
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check for conflicts: %w", err)
+	}
+	if hasConflict {
+		return nil, entities.ErrAppointmentConflict
+	}
+
+	// Create new appointment
+	if err := uc.appointmentRepo.Create(ctx, newAppointment); err != nil {
+		return nil, fmt.Errorf("failed to create new appointment: %w", err)
+	}
+
+	// Update original appointment to link to new one
+	original.LinkToRescheduledAppointment(newAppointment.ID)
+	if err := uc.appointmentRepo.Update(ctx, original); err != nil {
+		// If this fails, we should ideally rollback the creation
+		// For now, we'll return the error
+		return nil, fmt.Errorf("failed to update original appointment: %w", err)
+	}
+
+	// Build response
+	patientName := ""
+	isFirstVisit := false
+	if newAppointment.PatientID != nil {
+		patient, err := uc.patientRepo.GetByID(ctx, *newAppointment.PatientID)
+		if err == nil && patient != nil {
+			patientName = patient.FirstName
+			if patient.LastName != nil && *patient.LastName != "" {
+				patientName += " " + *patient.LastName
+			}
+			if patient.FirstAppointmentID != nil && *patient.FirstAppointmentID == newAppointment.ID {
+				isFirstVisit = true
+			}
+		}
+	}
+
+	return dto.ToAppointmentResponseWithPatientNameAndFirstVisit(newAppointment, patientName, isFirstVisit), nil
+}
