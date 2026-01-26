@@ -22,11 +22,11 @@ This document defines the database schema for the accounting and cash management
 
 ```sql
 CREATE TABLE appointment_accounts (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     appointment_id UUID NOT NULL UNIQUE REFERENCES appointments(id) ON DELETE CASCADE,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- Indexes
@@ -46,7 +46,7 @@ COMMENT ON COLUMN appointment_accounts.appointment_id IS 'One-to-one relationshi
 
 ```sql
 CREATE TABLE appointment_account_entries (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     appointment_account_id UUID NOT NULL REFERENCES appointment_accounts(id) ON DELETE CASCADE,
 
     -- Core transaction fields
@@ -65,10 +65,8 @@ CREATE TABLE appointment_account_entries (
     description TEXT NOT NULL,
     -- Human-readable description of the transaction
 
-    created_by_user_id UUID NOT NULL REFERENCES users(id),
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-
-    -- Conditional fields (required based on type)
+    created_by_user_id UUID NOT NULL REFERENCES auth.users(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     payment_method VARCHAR(20),
     -- Valid values: 'cash', 'card', 'transfer'
     -- Required if type = 'payment'
@@ -153,14 +151,14 @@ COMMENT ON COLUMN appointment_account_entries.cash_session_id IS 'Cash session w
 
 ```sql
 CREATE TABLE cash_sessions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     clinic_id UUID NOT NULL REFERENCES clinics(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES users(id),
+    user_id UUID NOT NULL REFERENCES auth.users(id),
     -- The receptionist/admin who opened the session
 
-    opened_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    closed_at TIMESTAMP,
+    opened_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    closed_at TIMESTAMPTZ,
     -- NULL = session is currently open
 
     starting_float_cents BIGINT NOT NULL,
@@ -178,10 +176,8 @@ CREATE TABLE cash_sessions (
     notes TEXT,
     -- Optional notes about the session
 
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 -- Indexes
 CREATE INDEX idx_sessions_user_clinic_status ON cash_sessions(user_id, clinic_id, status);
 CREATE INDEX idx_sessions_clinic_status_opened ON cash_sessions(clinic_id, status, opened_at);
@@ -203,7 +199,7 @@ COMMENT ON COLUMN cash_sessions.closed_at IS 'NULL indicates session is currentl
 
 ```sql
 CREATE TABLE reconciliations (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     cash_session_id UUID NOT NULL REFERENCES cash_sessions(id) ON DELETE CASCADE,
     organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     clinic_id UUID NOT NULL REFERENCES clinics(id) ON DELETE CASCADE,
@@ -216,10 +212,8 @@ CREATE TABLE reconciliations (
     -- Valid values: 'MXN', 'USD'
     -- Validated in application layer
 
-    reconciled_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    reconciled_by_user_id UUID NOT NULL REFERENCES users(id),
-
-    -- Reconciliation amounts (all in cents)
+    reconciled_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    reconciled_by_user_id UUID NOT NULL REFERENCES auth.users(id),
     expected_amount_cents BIGINT NOT NULL,
     -- Calculated from appointment_account_entries WHERE cash_session_id = this.cash_session_id
 
@@ -235,10 +229,6 @@ CREATE TABLE reconciliations (
     discrepancy_cents BIGINT NOT NULL,
     -- Difference between expected and actual (= actual_amount_cents - expected_amount_cents)
 
-    envelope_id TEXT,
-    -- Physical envelope identifier for tracking safe deposits
-    -- Format suggestion: R-{id}-{date}-{user}
-
     status VARCHAR(20) NOT NULL,
     -- Valid values: 'pending', 'closed', 'disputed'
     -- Validated in application layer
@@ -246,19 +236,9 @@ CREATE TABLE reconciliations (
     notes TEXT,
     -- Receptionist notes about discrepancies or special situations
 
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
--- Indexes
-CREATE INDEX idx_recon_session_payment_currency ON reconciliations(cash_session_id, payment_method, currency);
-CREATE INDEX idx_recon_clinic_payment_currency_date ON reconciliations(clinic_id, payment_method, currency, reconciled_at);
-CREATE INDEX idx_recon_user_date ON reconciliations(reconciled_by_user_id, reconciled_at);
-CREATE INDEX idx_recon_status_clinic ON reconciliations(status, clinic_id);
-CREATE INDEX idx_recon_envelope ON reconciliations(envelope_id);
-
--- Comments
-COMMENT ON TABLE reconciliations IS 'Cash reconciliations when closing sessions (one per payment_method + currency)';
 COMMENT ON COLUMN reconciliations.payment_method IS 'Payment method: cash, card, transfer (validated in app)';
 COMMENT ON COLUMN reconciliations.currency IS 'Currency code: MXN, USD (validated in app)';
 COMMENT ON COLUMN reconciliations.expected_amount_cents IS 'Calculated from entries in this cash session';
@@ -266,7 +246,6 @@ COMMENT ON COLUMN reconciliations.actual_amount_cents IS 'What receptionist coun
 COMMENT ON COLUMN reconciliations.float_left_cents IS 'Amount left for next session (for change)';
 COMMENT ON COLUMN reconciliations.deposited_cents IS 'Amount to safe = actual - float_left';
 COMMENT ON COLUMN reconciliations.discrepancy_cents IS 'Difference = actual - expected';
-COMMENT ON COLUMN reconciliations.envelope_id IS 'Physical envelope identifier for safe deposit';
 COMMENT ON COLUMN reconciliations.status IS 'Reconciliation status: pending, closed, disputed (validated in app)';
 ```
 
@@ -447,13 +426,13 @@ INSERT INTO reconciliations (
     payment_method, currency, reconciled_by_user_id,
     expected_amount_cents, actual_amount_cents,
     float_left_cents, deposited_cents, discrepancy_cents,
-    envelope_id, status
+    status
 ) VALUES (
     'session-uuid', 'org-uuid', 'clinic-uuid',
     'cash', 'MXN', 'receptionist-uuid',
     300000, 300000,  -- expected and actual match
     50000, 250000, 0,  -- float 500, deposit 2500, no discrepancy
-    'R-001-250126-Ana', 'closed'
+    'closed'
 );
 
 -- Update session as closed
