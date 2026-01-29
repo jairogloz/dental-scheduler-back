@@ -60,6 +60,12 @@ func main() {
 	availabilityRepo := postgresRepos.NewDoctorAvailabilityPostgresRepository(dbConn.GetDB())
 	userRepo := postgresRepos.NewUserPostgresRepository(dbConn.GetDB())
 	organizationRepo := postgresRepos.NewOrganizationPostgresRepository(dbConn.GetDB())
+	
+	// Accounting repositories
+	appointmentAccountRepo := postgresRepos.NewAppointmentAccountPostgresRepository(dbConn.GetDB())
+	appointmentAccountEntryRepo := postgresRepos.NewAppointmentAccountEntryPostgresRepository(dbConn.GetDB())
+	cashSessionRepo := postgresRepos.NewCashSessionPostgresRepository(dbConn.GetDB())
+	reconciliationRepo := postgresRepos.NewReconciliationPostgresRepository(dbConn.GetDB())
 
 	// Initialize domain services
 	conflictChecker := services.NewAppointmentConflictChecker(appointmentRepo, availabilityRepo)
@@ -70,6 +76,11 @@ func main() {
 		unitRepo,
 		conflictChecker,
 	)
+	
+	// Accounting domain services
+	accountingService := services.NewAccountingService(appointmentAccountRepo, appointmentAccountEntryRepo)
+	cashSessionService := services.NewCashSessionService(cashSessionRepo, appointmentAccountEntryRepo)
+	reconciliationService := services.NewReconciliationService(reconciliationRepo, cashSessionRepo, appointmentAccountEntryRepo)
 
 	// Initialize use cases
 	clinicUseCase := usecases.NewClinicUseCase(clinicRepo)
@@ -86,6 +97,12 @@ func main() {
 	)
 	getOrgDataUseCase := usecases.NewGetOrganizationDataUseCase(organizationRepo)
 	getDoctorAvailabilityUseCase := usecases.NewGetDoctorAvailabilityUseCase(availabilityRepo, doctorRepo)
+	
+	// Accounting use cases
+	createAppointmentEntryUseCase := usecases.NewCreateAppointmentEntryUseCase(accountingService, cashSessionService)
+	getAppointmentAccountUseCase := usecases.NewGetAppointmentAccountUseCase(accountingService)
+	cashSessionUseCase := usecases.NewCashSessionUseCase(cashSessionService, appointmentAccountEntryRepo)
+	reconciliationUseCase := usecases.NewReconciliationUseCase(reconciliationService, cashSessionService)
 
 	// Initialize handlers
 	healthHandler := handlers.NewHealthHandler()
@@ -96,6 +113,11 @@ func main() {
 	appointmentHandler := handlers.NewAppointmentHandler(appointmentUseCase, appLogger)
 	organizationHandler := handlers.NewOrganizationHandler(getOrgDataUseCase, appLogger)
 	doctorAvailabilityHandler := handlers.NewDoctorAvailabilityHandler(getDoctorAvailabilityUseCase, appLogger)
+	
+	// Accounting handlers
+	appointmentAccountHandler := handlers.NewAppointmentAccountHandler(createAppointmentEntryUseCase, getAppointmentAccountUseCase, appLogger)
+	cashSessionHandler := handlers.NewCashSessionHandler(cashSessionUseCase, appLogger)
+	reconciliationHandler := handlers.NewReconciliationHandler(reconciliationUseCase, appLogger)
 
 	// Set Gin mode
 	if cfg.Log.Level == "debug" {
@@ -129,6 +151,9 @@ func main() {
 		appointmentHandler,
 		organizationHandler,
 		doctorAvailabilityHandler,
+		appointmentAccountHandler,
+		cashSessionHandler,
+		reconciliationHandler,
 		userRepo,
 		appLogger,
 	)

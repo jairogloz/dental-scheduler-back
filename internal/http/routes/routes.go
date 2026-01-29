@@ -20,6 +20,9 @@ func SetupRoutes(
 	appointmentHandler *handlers.AppointmentHandler,
 	organizationHandler *handlers.OrganizationHandler,
 	doctorAvailabilityHandler *handlers.DoctorAvailabilityHandler,
+	appointmentAccountHandler *handlers.AppointmentAccountHandler,
+	cashSessionHandler *handlers.CashSessionHandler,
+	reconciliationHandler *handlers.ReconciliationHandler,
 	userRepo repositories.UserRepository,
 	logger *logger.Logger,
 ) {
@@ -87,9 +90,16 @@ func SetupRoutes(
 				appointments.POST("/:appointment_id/reschedule", appointmentHandler.RescheduleFromQueue) // Reschedule from queue
 				appointments.POST("/:appointment_id/snooze", appointmentHandler.SnoozeFromQueue)         // Snooze from queue
 				appointments.GET("/upcoming", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
-				appointments.GET("/:id", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
-				appointments.PUT("/:id", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
-				appointments.DELETE("/:id", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
+				appointments.GET("/:appointment_id", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
+				appointments.PUT("/:appointment_id", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
+				appointments.DELETE("/:appointment_id", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
+				
+				// Appointment Accounting routes (merged into appointments group)
+				appointments.GET("/:appointment_id/account", appointmentAccountHandler.GetAppointmentAccount)               // Get account with all entries
+				appointments.GET("/:appointment_id/account/balance", appointmentAccountHandler.GetAppointmentBalance)       // Get balance only
+				appointments.POST("/:appointment_id/account/charges", appointmentAccountHandler.CreateServiceCharge)        // Create service charge
+				appointments.POST("/:appointment_id/account/payments", appointmentAccountHandler.CreatePayment)             // Create payment
+				appointments.POST("/:appointment_id/account/entries/:entry_id/correct", appointmentAccountHandler.CreateCorrection) // Create correction
 			}
 
 			// Doctor availability routes
@@ -99,7 +109,27 @@ func SetupRoutes(
 				availability.GET("", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
 				availability.GET("/:doctor_id", doctorAvailabilityHandler.GetDoctorAvailability) // Get availability for specific doctor
 				availability.PUT("/:id", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
-				availability.DELETE("/:id", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
+				availability.DELETE("(:id", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
+			}
+
+			// Cash Session routes
+			cashSessions := protected.Group("/cash-sessions")
+			{
+				cashSessions.POST("/open", cashSessionHandler.OpenSession)                        // Open new cash session
+				cashSessions.GET("/current", cashSessionHandler.GetCurrentSession)                // Get current open session
+				cashSessions.GET("/:id", cashSessionHandler.GetSessionDetails)                    // Get session details
+				cashSessions.POST("/:id/close", cashSessionHandler.CloseSession)                  // Close session
+				cashSessions.GET("", cashSessionHandler.ListSessions)                             // List sessions with filters
+				cashSessions.GET("/:id/reconciliation-preview", reconciliationHandler.GetReconciliationPreview) // Get reconciliation preview
+				cashSessions.POST("/:id/reconcile", reconciliationHandler.CreateReconciliation)   // Create reconciliation
+			}
+
+			// Reconciliation routes
+			reconciliations := protected.Group("/reconciliations")
+			{
+				reconciliations.GET("/:id", reconciliationHandler.GetReconciliation)          // Get reconciliation by ID
+				reconciliations.GET("", reconciliationHandler.ListReconciliations)            // List reconciliations
+				reconciliations.GET("/discrepancies", reconciliationHandler.GetDiscrepancies) // Get discrepancies
 			}
 
 			// Organization data route for calendar loading
