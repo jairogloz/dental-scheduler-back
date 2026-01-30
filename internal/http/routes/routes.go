@@ -93,12 +93,12 @@ func SetupRoutes(
 				appointments.GET("/:appointment_id", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
 				appointments.PUT("/:appointment_id", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
 				appointments.DELETE("/:appointment_id", func(c *gin.Context) { c.JSON(501, gin.H{"error": "Not implemented"}) })
-				
+
 				// Appointment Accounting routes (merged into appointments group)
-				appointments.GET("/:appointment_id/account", appointmentAccountHandler.GetAppointmentAccount)               // Get account with all entries
-				appointments.GET("/:appointment_id/account/balance", appointmentAccountHandler.GetAppointmentBalance)       // Get balance only
-				appointments.POST("/:appointment_id/account/charges", appointmentAccountHandler.CreateServiceCharge)        // Create service charge
-				appointments.POST("/:appointment_id/account/payments", appointmentAccountHandler.CreatePayment)             // Create payment
+				appointments.GET("/:appointment_id/account", appointmentAccountHandler.GetAppointmentAccount)                       // Get account with all entries
+				appointments.GET("/:appointment_id/account/balance", appointmentAccountHandler.GetAppointmentBalance)               // Get balance only
+				appointments.POST("/:appointment_id/account/charges", appointmentAccountHandler.CreateServiceCharge)                // Create service charge
+				appointments.POST("/:appointment_id/account/payments", appointmentAccountHandler.CreatePayment)                     // Create payment
 				appointments.POST("/:appointment_id/account/entries/:entry_id/correct", appointmentAccountHandler.CreateCorrection) // Create correction
 			}
 
@@ -115,13 +115,13 @@ func SetupRoutes(
 			// Cash Session routes
 			cashSessions := protected.Group("/cash-sessions")
 			{
-				cashSessions.POST("/open", cashSessionHandler.OpenSession)                        // Open new cash session
-				cashSessions.GET("/current", cashSessionHandler.GetCurrentSession)                // Get current open session
-				cashSessions.GET("/:id", cashSessionHandler.GetSessionDetails)                    // Get session details
-				cashSessions.POST("/:id/close", cashSessionHandler.CloseSession)                  // Close session
-				cashSessions.GET("", cashSessionHandler.ListSessions)                             // List sessions with filters
+				cashSessions.POST("/open", cashSessionHandler.OpenSession)                                      // Open new cash session
+				cashSessions.GET("/current", cashSessionHandler.GetCurrentSession)                              // Get current open session
+				cashSessions.GET("/:id", cashSessionHandler.GetSessionDetails)                                  // Get session details
+				cashSessions.POST("/:id/close", cashSessionHandler.CloseSession)                                // Close session
+				cashSessions.GET("", cashSessionHandler.ListSessions)                                           // List sessions with filters
 				cashSessions.GET("/:id/reconciliation-preview", reconciliationHandler.GetReconciliationPreview) // Get reconciliation preview
-				cashSessions.POST("/:id/reconcile", reconciliationHandler.CreateReconciliation)   // Create reconciliation
+				cashSessions.POST("/:id/reconcile", reconciliationHandler.CreateReconciliation)                 // Create reconciliation
 			}
 
 			// Reconciliation routes

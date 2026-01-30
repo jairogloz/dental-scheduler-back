@@ -60,7 +60,7 @@ func main() {
 	availabilityRepo := postgresRepos.NewDoctorAvailabilityPostgresRepository(dbConn.GetDB())
 	userRepo := postgresRepos.NewUserPostgresRepository(dbConn.GetDB())
 	organizationRepo := postgresRepos.NewOrganizationPostgresRepository(dbConn.GetDB())
-	
+
 	// Accounting repositories
 	appointmentAccountRepo := postgresRepos.NewAppointmentAccountPostgresRepository(dbConn.GetDB())
 	appointmentAccountEntryRepo := postgresRepos.NewAppointmentAccountEntryPostgresRepository(dbConn.GetDB())
@@ -76,7 +76,7 @@ func main() {
 		unitRepo,
 		conflictChecker,
 	)
-	
+
 	// Accounting domain services
 	accountingService := services.NewAccountingService(appointmentAccountRepo, appointmentAccountEntryRepo)
 	cashSessionService := services.NewCashSessionService(cashSessionRepo, appointmentAccountEntryRepo)
@@ -97,7 +97,7 @@ func main() {
 	)
 	getOrgDataUseCase := usecases.NewGetOrganizationDataUseCase(organizationRepo)
 	getDoctorAvailabilityUseCase := usecases.NewGetDoctorAvailabilityUseCase(availabilityRepo, doctorRepo)
-	
+
 	// Accounting use cases
 	createAppointmentEntryUseCase := usecases.NewCreateAppointmentEntryUseCase(accountingService, cashSessionService)
 	getAppointmentAccountUseCase := usecases.NewGetAppointmentAccountUseCase(accountingService)
@@ -113,7 +113,7 @@ func main() {
 	appointmentHandler := handlers.NewAppointmentHandler(appointmentUseCase, appLogger)
 	organizationHandler := handlers.NewOrganizationHandler(getOrgDataUseCase, appLogger)
 	doctorAvailabilityHandler := handlers.NewDoctorAvailabilityHandler(getDoctorAvailabilityUseCase, appLogger)
-	
+
 	// Accounting handlers
 	appointmentAccountHandler := handlers.NewAppointmentAccountHandler(createAppointmentEntryUseCase, getAppointmentAccountUseCase, appLogger)
 	cashSessionHandler := handlers.NewCashSessionHandler(cashSessionUseCase, appLogger)
