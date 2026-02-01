@@ -29,6 +29,8 @@ func (r *CashSessionPostgresRepository) Create(ctx context.Context, session *ent
 			starting_float_cents, status, opening_type, notes, created_at, updated_at
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
 
+	// log the clinic ID for debugging
+	fmt.Printf("Creating cash session for clinic ID: %s\n", session.ClinicID)
 	_, err := r.db.ExecContext(ctx, query,
 		session.ID,
 		session.OrganizationID,

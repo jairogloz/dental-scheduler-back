@@ -73,12 +73,16 @@ func (h *CashSessionHandler) OpenSession(c *gin.Context) {
 		return
 	}
 
-	// Get clinic ID from request or fallback to organization
+	// Get clinic ID from request, user profile default clinic, or fallback to organization
 	clinicID := req.ClinicID
 	if clinicID == "" {
-		// Fallback to using organization ID as clinic ID
-		// In production, clinic ID should be from request or context
-		clinicID = organizationID
+		// Try to get default clinic from user profile
+		if defaultClinicID, exists := middleware.GetDefaultClinicIDFromContext(c); exists {
+			clinicID = defaultClinicID
+		} else {
+			// Fallback to using organization ID as clinic ID
+			clinicID = organizationID
+		}
 	}
 
 	userID := userProfile.Profile.ID.String()

@@ -20,14 +20,15 @@ const (
 
 // Profile represents a user profile linked to Supabase auth
 type Profile struct {
-	ID             uuid.UUID      `json:"id" db:"id"`                           // Links to auth.users(id)
-	OrganizationID *uuid.UUID     `json:"organization_id" db:"organization_id"` // Optional organization link
-	Email          string         `json:"email" db:"email"`
-	FullName       *string        `json:"full_name,omitempty" db:"full_name"`
-	Roles          pq.StringArray `json:"roles" db:"roles"`
-	AvatarURL      *string        `json:"avatar_url,omitempty" db:"avatar_url"`
-	CreatedAt      time.Time      `json:"created_at" db:"created_at"`
-	UpdatedAt      time.Time      `json:"updated_at" db:"updated_at"`
+	ID              uuid.UUID      `json:"id" db:"id"`                               // Links to auth.users(id)
+	OrganizationID  *uuid.UUID     `json:"organization_id" db:"organization_id"`     // Optional organization link
+	DefaultClinicID *uuid.UUID     `json:"default_clinic_id" db:"default_clinic_id"` // Optional default clinic
+	Email           string         `json:"email" db:"email"`
+	FullName        *string        `json:"full_name,omitempty" db:"full_name"`
+	Roles           pq.StringArray `json:"roles" db:"roles"`
+	AvatarURL       *string        `json:"avatar_url,omitempty" db:"avatar_url"`
+	CreatedAt       time.Time      `json:"created_at" db:"created_at"`
+	UpdatedAt       time.Time      `json:"updated_at" db:"updated_at"`
 }
 
 // NewProfile creates a new profile with default receptionist role
@@ -98,6 +99,18 @@ func (p *Profile) IsDoctor() bool {
 // SetOrganization sets the organization for the profile
 func (p *Profile) SetOrganization(organizationID uuid.UUID) {
 	p.OrganizationID = &organizationID
+	p.UpdatedAt = time.Now()
+}
+
+// SetDefaultClinic sets the default clinic for the profile
+func (p *Profile) SetDefaultClinic(clinicID uuid.UUID) {
+	p.DefaultClinicID = &clinicID
+	p.UpdatedAt = time.Now()
+}
+
+// ClearDefaultClinic removes the default clinic from the profile
+func (p *Profile) ClearDefaultClinic() {
+	p.DefaultClinicID = nil
 	p.UpdatedAt = time.Now()
 }
 

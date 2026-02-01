@@ -188,9 +188,11 @@ func (h *AppointmentAccountHandler) CreateServiceCharge(c *gin.Context) {
 	// Get user ID from user profile
 	userID := userProfile.Profile.ID.String()
 
-	// Optional clinic ID - can come from context or request (not available in profile)
-	// For now, set to nil - clinic ID will be determined by the use case if needed
+	// Get clinic ID from user profile default clinic
 	var clinicID *string = nil
+	if defaultClinicID, exists := middleware.GetDefaultClinicIDFromContext(c); exists {
+		clinicID = &defaultClinicID
+	}
 
 	input := usecases.CreateServiceChargeInput{
 		OrganizationID:         organizationID,
@@ -285,9 +287,11 @@ func (h *AppointmentAccountHandler) CreatePayment(c *gin.Context) {
 	// Get user ID from user profile
 	userID := userProfile.Profile.ID.String()
 
-	// Get clinic ID - use organization ID as fallback
-	// TODO: In production, clinic ID should come from request or be properly resolved
-	clinicID := organizationID
+	// Get clinic ID from user profile default clinic, fallback to organization ID
+	clinicID, exists := middleware.GetDefaultClinicIDFromContext(c)
+	if !exists {
+		clinicID = organizationID
+	}
 
 	input := usecases.CreatePaymentInput{
 		OrganizationID:  organizationID,

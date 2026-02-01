@@ -475,6 +475,16 @@ func GetUserProfileFromContext(c *gin.Context) (*entities.UserProfile, bool) {
 	return nil, false
 }
 
+// GetDefaultClinicIDFromContext retrieves the default clinic ID from user profile in context
+// Returns empty string if not found
+func GetDefaultClinicIDFromContext(c *gin.Context) (string, bool) {
+	userProfile, exists := GetUserProfileFromContext(c)
+	if !exists || userProfile.Profile == nil || userProfile.Profile.DefaultClinicID == nil {
+		return "", false
+	}
+	return userProfile.Profile.DefaultClinicID.String(), true
+}
+
 // GetOrganizationFromContext retrieves the organization from the Gin context
 func GetOrganizationFromContext(c *gin.Context) (*entities.Organization, bool) {
 	if org, exists := c.Get("organization"); exists {

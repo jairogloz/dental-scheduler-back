@@ -26,13 +26,13 @@ func NewUserPostgresRepository(db *sql.DB) repositories.UserRepository {
 // GetByID retrieves a profile by ID
 func (r *UserPostgresRepository) GetByID(ctx context.Context, id uuid.UUID) (*entities.Profile, error) {
 	query := `
-		SELECT id, email, full_name, roles, organization_id, avatar_url, created_at, updated_at
+		SELECT id, email, full_name, roles, organization_id, default_clinic_id, avatar_url, created_at, updated_at
 		FROM profiles
 		WHERE id = $1`
 
 	profile := &entities.Profile{}
 	var fullName, avatarURL sql.NullString
-	var organizationID sql.NullString
+	var organizationID, defaultClinicID sql.NullString
 	var roles pq.StringArray
 
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
@@ -41,6 +41,7 @@ func (r *UserPostgresRepository) GetByID(ctx context.Context, id uuid.UUID) (*en
 		&fullName,
 		&roles,
 		&organizationID,
+		&defaultClinicID,
 		&avatarURL,
 		&profile.CreatedAt,
 		&profile.UpdatedAt,
@@ -70,6 +71,13 @@ func (r *UserPostgresRepository) GetByID(ctx context.Context, id uuid.UUID) (*en
 		}
 		profile.OrganizationID = &orgUUID
 	}
+	if defaultClinicID.Valid {
+		clinicUUID, err := uuid.Parse(defaultClinicID.String)
+		if err != nil {
+			return nil, fmt.Errorf("invalid default clinic ID format: %w", err)
+		}
+		profile.DefaultClinicID = &clinicUUID
+	}
 
 	return profile, nil
 }
@@ -77,13 +85,13 @@ func (r *UserPostgresRepository) GetByID(ctx context.Context, id uuid.UUID) (*en
 // GetByEmail retrieves a profile by email
 func (r *UserPostgresRepository) GetByEmail(ctx context.Context, email string) (*entities.Profile, error) {
 	query := `
-		SELECT id, email, full_name, roles, organization_id, avatar_url, created_at, updated_at
+		SELECT id, email, full_name, roles, organization_id, default_clinic_id, avatar_url, created_at, updated_at
 		FROM profiles
 		WHERE email = $1`
 
 	profile := &entities.Profile{}
 	var fullName, avatarURL sql.NullString
-	var organizationID sql.NullString
+	var organizationID, defaultClinicID sql.NullString
 
 	err := r.db.QueryRowContext(ctx, query, email).Scan(
 		&profile.ID,
@@ -91,6 +99,7 @@ func (r *UserPostgresRepository) GetByEmail(ctx context.Context, email string) (
 		&fullName,
 		pq.Array(&profile.Roles),
 		&organizationID,
+		&defaultClinicID,
 		&avatarURL,
 		&profile.CreatedAt,
 		&profile.UpdatedAt,
@@ -117,6 +126,13 @@ func (r *UserPostgresRepository) GetByEmail(ctx context.Context, email string) (
 		}
 		profile.OrganizationID = &orgUUID
 	}
+	if defaultClinicID.Valid {
+		clinicUUID, err := uuid.Parse(defaultClinicID.String)
+		if err != nil {
+			return nil, fmt.Errorf("invalid default clinic ID format: %w", err)
+		}
+		profile.DefaultClinicID = &clinicUUID
+	}
 
 	return profile, nil
 }
@@ -136,7 +152,7 @@ func (r *UserPostgresRepository) GetBySupabaseID(ctx context.Context, supabaseID
 func (r *UserPostgresRepository) GetProfileBySupabaseID(ctx context.Context, supabaseID string) (*entities.UserProfile, error) {
 	query := `
 		SELECT 
-			p.id, p.email, p.full_name, p.roles, p.organization_id, p.avatar_url, p.created_at, p.updated_at,
+			p.id, p.email, p.full_name, p.roles, p.organization_id, p.default_clinic_id, p.avatar_url, p.created_at, p.updated_at,
 			o.id, o.name, o.description, o.address, o.phone, o.email, o.is_active, o.created_at, o.updated_at
 		FROM profiles p
 		LEFT JOIN organizations o ON p.organization_id = o.id
@@ -149,7 +165,7 @@ func (r *UserPostgresRepository) GetProfileBySupabaseID(ctx context.Context, sup
 
 	profile := &entities.Profile{}
 	var fullName, avatarURL sql.NullString
-	var profileOrgID sql.NullString
+	var profileOrgID, defaultClinicID sql.NullString
 	var orgID, orgName, orgDescription, orgAddress, orgPhone, orgEmail sql.NullString
 	var orgIsActive sql.NullBool
 	var orgCreatedAt, orgUpdatedAt sql.NullTime
@@ -161,6 +177,7 @@ func (r *UserPostgresRepository) GetProfileBySupabaseID(ctx context.Context, sup
 		&fullName,
 		&roles,
 		&profileOrgID,
+		&defaultClinicID,
 		&avatarURL,
 		&profile.CreatedAt,
 		&profile.UpdatedAt,
@@ -198,6 +215,13 @@ func (r *UserPostgresRepository) GetProfileBySupabaseID(ctx context.Context, sup
 			return nil, fmt.Errorf("invalid profile organization ID format: %w", err)
 		}
 		profile.OrganizationID = &orgUUID
+	}
+	if defaultClinicID.Valid {
+		clinicUUID, err := uuid.Parse(defaultClinicID.String)
+		if err != nil {
+			return nil, fmt.Errorf("invalid default clinic ID format: %w", err)
+		}
+		profile.DefaultClinicID = &clinicUUID
 	}
 
 	// Build organization if data exists
@@ -246,8 +270,8 @@ func (r *UserPostgresRepository) GetProfileBySupabaseID(ctx context.Context, sup
 // Create creates a new profile
 func (r *UserPostgresRepository) Create(ctx context.Context, profile *entities.Profile) error {
 	query := `
-		INSERT INTO profiles (id, email, full_name, roles, organization_id, avatar_url, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
+		INSERT INTO profiles (id, email, full_name, roles, organization_id, default_clinic_id, avatar_url, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 
 	_, err := r.db.ExecContext(ctx, query,
 		profile.ID,
@@ -255,6 +279,7 @@ func (r *UserPostgresRepository) Create(ctx context.Context, profile *entities.P
 		profile.FullName,
 		pq.Array(profile.Roles),
 		profile.OrganizationID,
+		profile.DefaultClinicID,
 		profile.AvatarURL,
 		profile.CreatedAt,
 		profile.UpdatedAt,
@@ -271,7 +296,7 @@ func (r *UserPostgresRepository) Create(ctx context.Context, profile *entities.P
 func (r *UserPostgresRepository) Update(ctx context.Context, profile *entities.Profile) error {
 	query := `
 		UPDATE profiles 
-		SET email = $2, full_name = $3, roles = $4, organization_id = $5, avatar_url = $6, updated_at = $7
+		SET email = $2, full_name = $3, roles = $4, organization_id = $5, default_clinic_id = $6, avatar_url = $7, updated_at = $8
 		WHERE id = $1`
 
 	result, err := r.db.ExecContext(ctx, query,
@@ -280,6 +305,7 @@ func (r *UserPostgresRepository) Update(ctx context.Context, profile *entities.P
 		profile.FullName,
 		pq.Array(profile.Roles),
 		profile.OrganizationID,
+		profile.DefaultClinicID,
 		profile.AvatarURL,
 		time.Now(),
 	)
