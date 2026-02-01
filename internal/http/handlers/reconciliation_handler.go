@@ -8,6 +8,7 @@ import (
 	"dental-scheduler-backend/internal/app/usecases"
 	"dental-scheduler-backend/internal/domain/entities"
 	"dental-scheduler-backend/internal/domain/ports/repositories"
+	"dental-scheduler-backend/internal/http/middleware"
 	"dental-scheduler-backend/internal/infra/logger"
 
 	"github.com/gin-gonic/gin"
@@ -34,13 +35,13 @@ func NewReconciliationHandler(
 // GetReconciliationPreview calculates expected amounts for a cash session
 // GET /cash-sessions/:id/reconciliation-preview
 func (h *ReconciliationHandler) GetReconciliationPreview(c *gin.Context) {
-	sessionID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
+	sessionID := c.Param("id")
+	if sessionID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"error": gin.H{
 				"code":    "INVALID_SESSION_ID",
-				"message": "Invalid session ID format",
+				"message": "Session ID is required",
 			},
 		})
 		return
@@ -81,13 +82,13 @@ func (h *ReconciliationHandler) GetReconciliationPreview(c *gin.Context) {
 // CreateReconciliation creates a reconciliation record
 // POST /cash-sessions/:id/reconcile
 func (h *ReconciliationHandler) CreateReconciliation(c *gin.Context) {
-	sessionID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
+	sessionID := c.Param("id")
+	if sessionID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"error": gin.H{
 				"code":    "INVALID_SESSION_ID",
-				"message": "Invalid session ID format",
+				"message": "Session ID is required",
 			},
 		})
 		return
@@ -105,9 +106,37 @@ func (h *ReconciliationHandler) CreateReconciliation(c *gin.Context) {
 		return
 	}
 
-	organizationID, _ := c.Get("organization_id")
-	clinicID, _ := c.Get("clinic_id")
-	userID, _ := c.Get("user_id")
+	// Get user profile from context
+	userProfile, exists := middleware.GetUserProfileFromContext(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "USER_PROFILE_REQUIRED",
+				"message": "User profile not found in context",
+			},
+		})
+		return
+	}
+
+	// Get organization ID
+	organizationID, exists := middleware.GetOrganizationIDFromContext(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "ORGANIZATION_ID_REQUIRED",
+				"message": "Organization ID not found in context",
+			},
+		})
+		return
+	}
+
+	// Get clinic ID - use organization ID as fallback
+	// In production, this should come from request or authenticated context
+	clinicID := organizationID
+
+	userID := userProfile.Profile.ID.String()
 
 	// Validate amounts before creating
 	if err := h.reconciliationUseCase.ValidateReconciliationAmounts(
@@ -128,15 +157,15 @@ func (h *ReconciliationHandler) CreateReconciliation(c *gin.Context) {
 
 	input := usecases.CreateReconciliationInput{
 		CashSessionID:      sessionID,
-		OrganizationID:     organizationID.(uuid.UUID),
-		ClinicID:           clinicID.(uuid.UUID),
+		OrganizationID:     organizationID,
+		ClinicID:           clinicID,
 		PaymentMethod:      req.PaymentMethod,
 		Currency:           req.Currency,
 		ExpectedCents:      req.ExpectedCents,
 		ActualCents:        req.ActualCents,
 		FloatLeftCents:     req.FloatLeftCents,
 		DepositedCents:     req.DepositedCents,
-		ReconciledByUserID: userID.(uuid.UUID),
+		ReconciledByUserID: userID,
 		Notes:              req.Notes,
 	}
 
@@ -256,8 +285,30 @@ func (h *ReconciliationHandler) ListReconciliations(c *gin.Context) {
 		return
 	}
 
-	organizationID, _ := c.Get("organization_id")
-	orgID := organizationID.(uuid.UUID)
+	orgIDStr, exists := middleware.GetOrganizationIDFromContext(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "ORGANIZATION_ID_REQUIRED",
+				"message": "Organization ID not found in context",
+			},
+		})
+		return
+	}
+
+	orgID, err := uuid.Parse(orgIDStr)
+	if err != nil {
+		h.logger.Logger.WithError(err).Error("Invalid organization ID format")
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "INVALID_ORGANIZATION_ID",
+				"message": "Invalid organization ID format",
+			},
+		})
+		return
+	}
 
 	// Set defaults
 	if query.Page == 0 {

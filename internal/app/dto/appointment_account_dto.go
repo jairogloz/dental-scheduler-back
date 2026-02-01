@@ -8,7 +8,7 @@ import (
 
 // CreateServiceChargeRequest represents a request to create a service charge
 type CreateServiceChargeRequest struct {
-	DoctorID               uuid.UUID           `json:"doctor_id" binding:"required"`
+	DoctorID               string              `json:"doctor_id" binding:"required"`
 	DoctorType             entities.DoctorType `json:"doctor_type" binding:"required"`
 	Currency               entities.Currency   `json:"currency" binding:"required"`
 	AmountCents            int64               `json:"amount_cents" binding:"required"`

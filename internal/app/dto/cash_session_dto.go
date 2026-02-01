@@ -8,7 +8,7 @@ import (
 
 // OpenCashSessionRequest represents a request to open a cash session
 type OpenCashSessionRequest struct {
-	ClinicID           uuid.UUID                       `json:"clinic_id" binding:"required"`
+	ClinicID           string                          `json:"clinic_id"`
 	OpeningType        entities.CashSessionOpeningType `json:"opening_type" binding:"required"`
 	StartingFloatCents int64                           `json:"starting_float_cents" binding:"required,min=0"`
 	Notes              *string                         `json:"notes,omitempty"`

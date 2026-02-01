@@ -33,9 +33,19 @@ type GetAccountWithEntriesOutput struct {
 }
 
 // Execute retrieves an appointment account with all its entries and balance
-func (uc *GetAppointmentAccountUseCase) Execute(ctx context.Context, organizationID, appointmentID uuid.UUID) (*GetAccountWithEntriesOutput, error) {
+func (uc *GetAppointmentAccountUseCase) Execute(ctx context.Context, organizationID, appointmentID string) (*GetAccountWithEntriesOutput, error) {
+	// Parse UUIDs
+	orgID, err := uuid.Parse(organizationID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid organization ID: %w", err)
+	}
+	apptID, err := uuid.Parse(appointmentID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid appointment ID: %w", err)
+	}
+
 	// Get account
-	account, err := uc.accountingService.CreateOrGetAccount(ctx, organizationID, appointmentID)
+	account, err := uc.accountingService.CreateOrGetAccount(ctx, orgID, apptID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get account: %w", err)
 	}
@@ -60,9 +70,19 @@ func (uc *GetAppointmentAccountUseCase) Execute(ctx context.Context, organizatio
 }
 
 // GetBalanceOnly retrieves just the balance for an appointment
-func (uc *GetAppointmentAccountUseCase) GetBalanceOnly(ctx context.Context, organizationID, appointmentID uuid.UUID) (*repositories.AccountBalance, error) {
+func (uc *GetAppointmentAccountUseCase) GetBalanceOnly(ctx context.Context, organizationID, appointmentID string) (*repositories.AccountBalance, error) {
+	// Parse UUIDs
+	orgID, err := uuid.Parse(organizationID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid organization ID: %w", err)
+	}
+	apptID, err := uuid.Parse(appointmentID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid appointment ID: %w", err)
+	}
+
 	// Get or create account
-	account, err := uc.accountingService.CreateOrGetAccount(ctx, organizationID, appointmentID)
+	account, err := uc.accountingService.CreateOrGetAccount(ctx, orgID, apptID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get account: %w", err)
 	}

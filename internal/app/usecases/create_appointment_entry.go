@@ -29,39 +29,57 @@ func NewCreateAppointmentEntryUseCase(
 
 // CreateServiceChargeInput contains parameters for creating a service charge
 type CreateServiceChargeInput struct {
-	OrganizationID         uuid.UUID
-	AppointmentID          uuid.UUID
-	DoctorID               uuid.UUID
+	OrganizationID         string
+	AppointmentID          string
+	DoctorID               string
 	DoctorType             entities.DoctorType
 	Currency               entities.Currency
 	AmountCents            int64
 	Description            string
-	CreatedByUserID        uuid.UUID
+	CreatedByUserID        string
 	ServiceID              *string
 	CommissionPct          *float64
 	ExternalDoctorFeeCents *int64
-	ClinicID               *uuid.UUID // For auto-creating cash session if needed
-	UserID                 *uuid.UUID // For auto-creating cash session if needed
+	ClinicID               *string // For auto-creating cash session if needed
+	UserID                 *string // For auto-creating cash session if needed
 }
 
 // CreatePaymentInput contains parameters for creating a payment
 type CreatePaymentInput struct {
-	OrganizationID  uuid.UUID
-	AppointmentID   uuid.UUID
+	OrganizationID  string
+	AppointmentID   string
 	PaymentMethod   entities.PaymentMethod
 	Currency        entities.Currency
 	AmountCents     int64
 	Description     string
-	CreatedByUserID uuid.UUID
+	CreatedByUserID string
 	ExchangeRate    *float64
-	ClinicID        uuid.UUID // Required for cash session lookup
-	UserID          uuid.UUID // Required for cash session lookup
+	ClinicID        string // Required for cash session lookup
+	UserID          string // Required for cash session lookup
 }
 
 // Execute creates a service charge entry
 func (uc *CreateAppointmentEntryUseCase) CreateServiceCharge(ctx context.Context, input CreateServiceChargeInput) (*entities.AppointmentAccountEntry, error) {
+	// Parse UUIDs
+	orgID, err := uuid.Parse(input.OrganizationID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid organization ID: %w", err)
+	}
+	apptID, err := uuid.Parse(input.AppointmentID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid appointment ID: %w", err)
+	}
+	doctorID, err := uuid.Parse(input.DoctorID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid doctor ID: %w", err)
+	}
+	userID, err := uuid.Parse(input.CreatedByUserID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user ID: %w", err)
+	}
+
 	// Get or create appointment account
-	account, err := uc.accountingService.CreateOrGetAccount(ctx, input.OrganizationID, input.AppointmentID)
+	account, err := uc.accountingService.CreateOrGetAccount(ctx, orgID, apptID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get/create account: %w", err)
 	}
@@ -69,7 +87,15 @@ func (uc *CreateAppointmentEntryUseCase) CreateServiceCharge(ctx context.Context
 	// For cash payments, get or create cash session
 	var cashSessionID *uuid.UUID
 	if input.ClinicID != nil && input.UserID != nil {
-		session, err := uc.cashSessionService.GetOrCreateOpenSession(ctx, input.OrganizationID, *input.ClinicID, *input.UserID)
+		clinicID, err := uuid.Parse(*input.ClinicID)
+		if err != nil {
+			return nil, fmt.Errorf("invalid clinic ID: %w", err)
+		}
+		sessionUserID, err := uuid.Parse(*input.UserID)
+		if err != nil {
+			return nil, fmt.Errorf("invalid user ID for session: %w", err)
+		}
+		session, err := uc.cashSessionService.GetOrCreateOpenSession(ctx, orgID, clinicID, sessionUserID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get/create cash session: %w", err)
 		}
@@ -80,11 +106,11 @@ func (uc *CreateAppointmentEntryUseCase) CreateServiceCharge(ctx context.Context
 	entry, err := uc.accountingService.CreateServiceCharge(
 		ctx,
 		account.ID,
-		input.DoctorID,
+		doctorID,
 		input.DoctorType,
 		input.AmountCents,
 		input.Description,
-		input.CreatedByUserID,
+		userID,
 		cashSessionID,
 		input.ServiceID,
 		input.CommissionPct,
@@ -99,8 +125,30 @@ func (uc *CreateAppointmentEntryUseCase) CreateServiceCharge(ctx context.Context
 
 // CreatePayment creates a payment entry
 func (uc *CreateAppointmentEntryUseCase) CreatePayment(ctx context.Context, input CreatePaymentInput) (*entities.AppointmentAccountEntry, error) {
+	// Parse UUIDs
+	orgID, err := uuid.Parse(input.OrganizationID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid organization ID: %w", err)
+	}
+	apptID, err := uuid.Parse(input.AppointmentID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid appointment ID: %w", err)
+	}
+	userID, err := uuid.Parse(input.CreatedByUserID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user ID: %w", err)
+	}
+	clinicID, err := uuid.Parse(input.ClinicID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid clinic ID: %w", err)
+	}
+	sessionUserID, err := uuid.Parse(input.UserID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user ID for session: %w", err)
+	}
+
 	// Get or create appointment account
-	account, err := uc.accountingService.CreateOrGetAccount(ctx, input.OrganizationID, input.AppointmentID)
+	account, err := uc.accountingService.CreateOrGetAccount(ctx, orgID, apptID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get/create account: %w", err)
 	}
@@ -108,7 +156,7 @@ func (uc *CreateAppointmentEntryUseCase) CreatePayment(ctx context.Context, inpu
 	// For cash payments, get or create cash session
 	var cashSessionID *uuid.UUID
 	if input.PaymentMethod == entities.PaymentMethodCash {
-		session, err := uc.cashSessionService.GetOrCreateOpenSession(ctx, input.OrganizationID, input.ClinicID, input.UserID)
+		session, err := uc.cashSessionService.GetOrCreateOpenSession(ctx, orgID, clinicID, sessionUserID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get/create cash session: %w", err)
 		}
@@ -123,7 +171,7 @@ func (uc *CreateAppointmentEntryUseCase) CreatePayment(ctx context.Context, inpu
 		input.Currency,
 		input.AmountCents,
 		input.Description,
-		input.CreatedByUserID,
+		userID,
 		cashSessionID,
 		input.ExchangeRate,
 	)

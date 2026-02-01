@@ -7,6 +7,7 @@ import (
 	"dental-scheduler-backend/internal/app/usecases"
 	"dental-scheduler-backend/internal/domain/entities"
 	"dental-scheduler-backend/internal/domain/ports/repositories"
+	"dental-scheduler-backend/internal/http/middleware"
 	"dental-scheduler-backend/internal/infra/logger"
 
 	"github.com/gin-gonic/gin"
@@ -36,20 +37,20 @@ func NewAppointmentAccountHandler(
 // GetAppointmentAccount retrieves an appointment account with all entries and balance
 // GET /appointments/:appointment_id/account
 func (h *AppointmentAccountHandler) GetAppointmentAccount(c *gin.Context) {
-	appointmentID, err := uuid.Parse(c.Param("appointment_id"))
-	if err != nil {
+	appointmentID := c.Param("appointment_id")
+	if appointmentID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"error": gin.H{
 				"code":    "INVALID_APPOINTMENT_ID",
-				"message": "Invalid appointment ID format",
+				"message": "Appointment ID is required",
 			},
 		})
 		return
 	}
 
-	// Get organization ID from context (set by auth middleware)
-	organizationID, exists := c.Get("organization_id")
+	// Get organization ID from context using middleware helper
+	organizationID, exists := middleware.GetOrganizationIDFromContext(c)
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
@@ -61,7 +62,7 @@ func (h *AppointmentAccountHandler) GetAppointmentAccount(c *gin.Context) {
 		return
 	}
 
-	result, err := h.getAccountUseCase.Execute(c.Request.Context(), organizationID.(uuid.UUID), appointmentID)
+	result, err := h.getAccountUseCase.Execute(c.Request.Context(), organizationID, appointmentID)
 	if err != nil {
 		h.logger.Logger.WithError(err).Error("Failed to get appointment account")
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -86,19 +87,19 @@ func (h *AppointmentAccountHandler) GetAppointmentAccount(c *gin.Context) {
 // GetAppointmentBalance retrieves just the balance for an appointment
 // GET /appointments/:appointment_id/account/balance
 func (h *AppointmentAccountHandler) GetAppointmentBalance(c *gin.Context) {
-	appointmentID, err := uuid.Parse(c.Param("appointment_id"))
-	if err != nil {
+	appointmentID := c.Param("appointment_id")
+	if appointmentID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"error": gin.H{
 				"code":    "INVALID_APPOINTMENT_ID",
-				"message": "Invalid appointment ID format",
+				"message": "Appointment ID is required",
 			},
 		})
 		return
 	}
 
-	organizationID, exists := c.Get("organization_id")
+	organizationID, exists := middleware.GetOrganizationIDFromContext(c)
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
@@ -110,7 +111,7 @@ func (h *AppointmentAccountHandler) GetAppointmentBalance(c *gin.Context) {
 		return
 	}
 
-	balance, err := h.getAccountUseCase.GetBalanceOnly(c.Request.Context(), organizationID.(uuid.UUID), appointmentID)
+	balance, err := h.getAccountUseCase.GetBalanceOnly(c.Request.Context(), organizationID, appointmentID)
 	if err != nil {
 		h.logger.Logger.WithError(err).Error("Failed to get appointment balance")
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -134,13 +135,13 @@ func (h *AppointmentAccountHandler) GetAppointmentBalance(c *gin.Context) {
 // CreateServiceCharge creates a service charge entry
 // POST /appointments/:appointment_id/account/charges
 func (h *AppointmentAccountHandler) CreateServiceCharge(c *gin.Context) {
-	appointmentID, err := uuid.Parse(c.Param("appointment_id"))
-	if err != nil {
+	appointmentID := c.Param("appointment_id")
+	if appointmentID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"error": gin.H{
 				"code":    "INVALID_APPOINTMENT_ID",
-				"message": "Invalid appointment ID format",
+				"message": "Appointment ID is required",
 			},
 		})
 		return
@@ -158,36 +159,53 @@ func (h *AppointmentAccountHandler) CreateServiceCharge(c *gin.Context) {
 		return
 	}
 
-	organizationID, _ := c.Get("organization_id")
-	userID, _ := c.Get("user_id")
-	clinicID, clinicExists := c.Get("clinic_id")
-
-	var clinicUUID *uuid.UUID
-	if clinicExists {
-		cid := clinicID.(uuid.UUID)
-		clinicUUID = &cid
+	// Get user profile from context using middleware helper
+	userProfile, exists := middleware.GetUserProfileFromContext(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "USER_PROFILE_REQUIRED",
+				"message": "User profile not found in context",
+			},
+		})
+		return
 	}
 
-	var userUUID *uuid.UUID
-	if userID != nil {
-		uid := userID.(uuid.UUID)
-		userUUID = &uid
+	// Get organization ID
+	organizationID, exists := middleware.GetOrganizationIDFromContext(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "ORGANIZATION_ID_REQUIRED",
+				"message": "Organization ID not found in context",
+			},
+		})
+		return
 	}
+
+	// Get user ID from user profile
+	userID := userProfile.Profile.ID.String()
+
+	// Optional clinic ID - can come from context or request (not available in profile)
+	// For now, set to nil - clinic ID will be determined by the use case if needed
+	var clinicID *string = nil
 
 	input := usecases.CreateServiceChargeInput{
-		OrganizationID:         organizationID.(uuid.UUID),
+		OrganizationID:         organizationID,
 		AppointmentID:          appointmentID,
 		DoctorID:               req.DoctorID,
 		DoctorType:             req.DoctorType,
 		Currency:               req.Currency,
 		AmountCents:            req.AmountCents,
 		Description:            req.Description,
-		CreatedByUserID:        userID.(uuid.UUID),
+		CreatedByUserID:        userID,
 		ServiceID:              req.ServiceID,
 		CommissionPct:          req.CommissionPct,
 		ExternalDoctorFeeCents: req.ExternalDoctorFeeCents,
-		ClinicID:               clinicUUID,
-		UserID:                 userUUID,
+		ClinicID:               clinicID,
+		UserID:                 &userID,
 	}
 
 	entry, err := h.createEntryUseCase.CreateServiceCharge(c.Request.Context(), input)
@@ -214,13 +232,13 @@ func (h *AppointmentAccountHandler) CreateServiceCharge(c *gin.Context) {
 // CreatePayment creates a payment entry
 // POST /appointments/:appointment_id/account/payments
 func (h *AppointmentAccountHandler) CreatePayment(c *gin.Context) {
-	appointmentID, err := uuid.Parse(c.Param("appointment_id"))
-	if err != nil {
+	appointmentID := c.Param("appointment_id")
+	if appointmentID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"error": gin.H{
 				"code":    "INVALID_APPOINTMENT_ID",
-				"message": "Invalid appointment ID format",
+				"message": "Appointment ID is required",
 			},
 		})
 		return
@@ -238,21 +256,50 @@ func (h *AppointmentAccountHandler) CreatePayment(c *gin.Context) {
 		return
 	}
 
-	organizationID, _ := c.Get("organization_id")
-	userID, _ := c.Get("user_id")
-	clinicID, _ := c.Get("clinic_id")
+	// Get user profile from context
+	userProfile, exists := middleware.GetUserProfileFromContext(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "USER_PROFILE_REQUIRED",
+				"message": "User profile not found in context",
+			},
+		})
+		return
+	}
+
+	// Get organization ID
+	organizationID, exists := middleware.GetOrganizationIDFromContext(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "ORGANIZATION_ID_REQUIRED",
+				"message": "Organization ID not found in context",
+			},
+		})
+		return
+	}
+
+	// Get user ID from user profile
+	userID := userProfile.Profile.ID.String()
+
+	// Get clinic ID - use organization ID as fallback
+	// TODO: In production, clinic ID should come from request or be properly resolved
+	clinicID := organizationID
 
 	input := usecases.CreatePaymentInput{
-		OrganizationID:  organizationID.(uuid.UUID),
+		OrganizationID:  organizationID,
 		AppointmentID:   appointmentID,
 		PaymentMethod:   req.PaymentMethod,
 		Currency:        req.Currency,
 		AmountCents:     req.AmountCents,
 		Description:     req.Description,
-		CreatedByUserID: userID.(uuid.UUID),
+		CreatedByUserID: userID,
 		ExchangeRate:    req.ExchangeRate,
-		ClinicID:        clinicID.(uuid.UUID),
-		UserID:          userID.(uuid.UUID),
+		ClinicID:        clinicID,
+		UserID:          userID,
 	}
 
 	entry, err := h.createEntryUseCase.CreatePayment(c.Request.Context(), input)

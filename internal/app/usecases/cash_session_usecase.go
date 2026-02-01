@@ -30,9 +30,9 @@ func NewCashSessionUseCase(
 
 // OpenSessionInput contains parameters for opening a cash session
 type OpenSessionInput struct {
-	OrganizationID     uuid.UUID
-	ClinicID           uuid.UUID
-	UserID             uuid.UUID
+	OrganizationID     string
+	ClinicID           string
+	UserID             string
 	OpeningType        entities.CashSessionOpeningType
 	StartingFloatCents int64
 	Notes              *string
@@ -40,11 +40,25 @@ type OpenSessionInput struct {
 
 // OpenSession opens a new cash session
 func (uc *CashSessionUseCase) OpenSession(ctx context.Context, input OpenSessionInput) (*entities.CashSession, error) {
+	// Parse UUIDs
+	orgID, err := uuid.Parse(input.OrganizationID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid organization ID: %w", err)
+	}
+	clinicID, err := uuid.Parse(input.ClinicID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid clinic ID: %w", err)
+	}
+	userID, err := uuid.Parse(input.UserID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user ID: %w", err)
+	}
+
 	session, err := uc.cashSessionService.OpenSession(
 		ctx,
-		input.OrganizationID,
-		input.ClinicID,
-		input.UserID,
+		orgID,
+		clinicID,
+		userID,
 		input.OpeningType,
 		input.StartingFloatCents,
 		input.Notes,
@@ -57,8 +71,18 @@ func (uc *CashSessionUseCase) OpenSession(ctx context.Context, input OpenSession
 }
 
 // GetCurrentSession retrieves the current open session for a user at a clinic
-func (uc *CashSessionUseCase) GetCurrentSession(ctx context.Context, userID, clinicID uuid.UUID) (*entities.CashSession, error) {
-	session, err := uc.cashSessionService.GetCurrentOpenSession(ctx, userID, clinicID)
+func (uc *CashSessionUseCase) GetCurrentSession(ctx context.Context, userID, clinicID string) (*entities.CashSession, error) {
+	// Parse UUIDs
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user ID: %w", err)
+	}
+	cid, err := uuid.Parse(clinicID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid clinic ID: %w", err)
+	}
+
+	session, err := uc.cashSessionService.GetCurrentOpenSession(ctx, uid, cid)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get current session: %w", err)
 	}

@@ -36,9 +36,15 @@ type ReconciliationPreviewOutput struct {
 }
 
 // GetReconciliationPreview calculates expected amounts for a cash session
-func (uc *ReconciliationUseCase) GetReconciliationPreview(ctx context.Context, sessionID uuid.UUID) (*ReconciliationPreviewOutput, error) {
+func (uc *ReconciliationUseCase) GetReconciliationPreview(ctx context.Context, sessionID string) (*ReconciliationPreviewOutput, error) {
+	// Parse UUID
+	sid, err := uuid.Parse(sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid session ID: %w", err)
+	}
+
 	// Get session
-	session, err := uc.cashSessionService.GetSessionByID(ctx, sessionID)
+	session, err := uc.cashSessionService.GetSessionByID(ctx, sid)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get session: %w", err)
 	}
@@ -48,7 +54,7 @@ func (uc *ReconciliationUseCase) GetReconciliationPreview(ctx context.Context, s
 	}
 
 	// Get reconciliation data
-	data, err := uc.reconciliationService.PrepareReconciliationData(ctx, sessionID)
+	data, err := uc.reconciliationService.PrepareReconciliationData(ctx, sid)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prepare reconciliation data: %w", err)
 	}
@@ -62,33 +68,51 @@ func (uc *ReconciliationUseCase) GetReconciliationPreview(ctx context.Context, s
 
 // CreateReconciliationInput contains parameters for creating a reconciliation
 type CreateReconciliationInput struct {
-	CashSessionID      uuid.UUID
-	OrganizationID     uuid.UUID
-	ClinicID           uuid.UUID
+	CashSessionID      string
+	OrganizationID     string
+	ClinicID           string
 	PaymentMethod      entities.PaymentMethod
 	Currency           entities.Currency
 	ExpectedCents      int64
 	ActualCents        int64
 	FloatLeftCents     int64
 	DepositedCents     int64
-	ReconciledByUserID uuid.UUID
+	ReconciledByUserID string
 	Notes              *string
 }
 
 // CreateReconciliation creates a reconciliation record
 func (uc *ReconciliationUseCase) CreateReconciliation(ctx context.Context, input CreateReconciliationInput) (*entities.Reconciliation, error) {
+	// Parse UUIDs
+	sessionID, err := uuid.Parse(input.CashSessionID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid cash session ID: %w", err)
+	}
+	orgID, err := uuid.Parse(input.OrganizationID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid organization ID: %w", err)
+	}
+	clinicID, err := uuid.Parse(input.ClinicID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid clinic ID: %w", err)
+	}
+	userID, err := uuid.Parse(input.ReconciledByUserID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user ID: %w", err)
+	}
+
 	reconciliation, err := uc.reconciliationService.CreateReconciliation(
 		ctx,
-		input.CashSessionID,
-		input.OrganizationID,
-		input.ClinicID,
+		sessionID,
+		orgID,
+		clinicID,
 		input.PaymentMethod,
 		input.Currency,
 		input.ExpectedCents,
 		input.ActualCents,
 		input.FloatLeftCents,
 		input.DepositedCents,
-		input.ReconciledByUserID,
+		userID,
 		input.Notes,
 	)
 	if err != nil {

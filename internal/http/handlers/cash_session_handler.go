@@ -8,6 +8,7 @@ import (
 	"dental-scheduler-backend/internal/app/usecases"
 	"dental-scheduler-backend/internal/domain/entities"
 	"dental-scheduler-backend/internal/domain/ports/repositories"
+	"dental-scheduler-backend/internal/http/middleware"
 	"dental-scheduler-backend/internal/infra/logger"
 
 	"github.com/gin-gonic/gin"
@@ -46,13 +47,46 @@ func (h *CashSessionHandler) OpenSession(c *gin.Context) {
 		return
 	}
 
-	organizationID, _ := c.Get("organization_id")
-	userID, _ := c.Get("user_id")
+	// Get user profile from context
+	userProfile, exists := middleware.GetUserProfileFromContext(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "USER_PROFILE_REQUIRED",
+				"message": "User profile not found in context",
+			},
+		})
+		return
+	}
+
+	// Get organization ID
+	organizationID, exists := middleware.GetOrganizationIDFromContext(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "ORGANIZATION_ID_REQUIRED",
+				"message": "Organization ID not found in context",
+			},
+		})
+		return
+	}
+
+	// Get clinic ID from request or fallback to organization
+	clinicID := req.ClinicID
+	if clinicID == "" {
+		// Fallback to using organization ID as clinic ID
+		// In production, clinic ID should be from request or context
+		clinicID = organizationID
+	}
+
+	userID := userProfile.Profile.ID.String()
 
 	input := usecases.OpenSessionInput{
-		OrganizationID:     organizationID.(uuid.UUID),
-		ClinicID:           req.ClinicID,
-		UserID:             userID.(uuid.UUID),
+		OrganizationID:     organizationID,
+		ClinicID:           clinicID,
+		UserID:             userID,
 		OpeningType:        req.OpeningType,
 		StartingFloatCents: req.StartingFloatCents,
 		Notes:              req.Notes,
@@ -61,7 +95,7 @@ func (h *CashSessionHandler) OpenSession(c *gin.Context) {
 	session, err := h.cashSessionUseCase.OpenSession(c.Request.Context(), input)
 	if err != nil {
 		h.logger.Logger.WithError(err).Error("Failed to open cash session")
-		
+
 		// Handle specific business errors
 		if err == entities.ErrCashSessionAlreadyOpen {
 			c.JSON(http.StatusConflict, gin.H{
@@ -107,21 +141,20 @@ func (h *CashSessionHandler) GetCurrentSession(c *gin.Context) {
 		return
 	}
 
-	clinicID, err := uuid.Parse(clinicIDStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+	// Get user ID from middleware helper
+	userID, exists := middleware.GetUserIDFromContext(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
 			"error": gin.H{
-				"code":    "INVALID_CLINIC_ID",
-				"message": "Invalid clinic ID format",
+				"code":    "USER_ID_REQUIRED",
+				"message": "User ID not found in context",
 			},
 		})
 		return
 	}
 
-	userID, _ := c.Get("user_id")
-
-	session, err := h.cashSessionUseCase.GetCurrentSession(c.Request.Context(), userID.(uuid.UUID), clinicID)
+	session, err := h.cashSessionUseCase.GetCurrentSession(c.Request.Context(), userID, clinicIDStr)
 	if err != nil {
 		if err == entities.ErrNoCashSessionOpen {
 			c.JSON(http.StatusNotFound, gin.H{
@@ -270,8 +303,30 @@ func (h *CashSessionHandler) ListSessions(c *gin.Context) {
 		return
 	}
 
-	organizationID, _ := c.Get("organization_id")
-	orgID := organizationID.(uuid.UUID)
+	orgIDStr, exists := middleware.GetOrganizationIDFromContext(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "ORGANIZATION_ID_REQUIRED",
+				"message": "Organization ID not found in context",
+			},
+		})
+		return
+	}
+
+	orgID, err := uuid.Parse(orgIDStr)
+	if err != nil {
+		h.logger.Logger.WithError(err).Error("Invalid organization ID format")
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "INVALID_ORGANIZATION_ID",
+				"message": "Invalid organization ID format",
+			},
+		})
+		return
+	}
 
 	// Set defaults
 	if query.Page == 0 {
