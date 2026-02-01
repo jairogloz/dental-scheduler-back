@@ -287,11 +287,8 @@ func (h *AppointmentAccountHandler) CreatePayment(c *gin.Context) {
 	// Get user ID from user profile
 	userID := userProfile.Profile.ID.String()
 
-	// Get clinic ID from user profile default clinic, fallback to organization ID
-	clinicID, exists := middleware.GetDefaultClinicIDFromContext(c)
-	if !exists {
-		clinicID = organizationID
-	}
+	// Get clinic ID from user profile default clinic (validated by middleware)
+	clinicID := userProfile.Profile.DefaultClinicID.String()
 
 	input := usecases.CreatePaymentInput{
 		OrganizationID:  organizationID,
@@ -354,12 +351,23 @@ func (h *AppointmentAccountHandler) CreateCorrection(c *gin.Context) {
 		return
 	}
 
-	userID, _ := c.Get("user_id")
+	// Get user profile from context using middleware helper
+	userProfile, exists := middleware.GetUserProfileFromContext(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"success": false,
+			"error": gin.H{
+				"code":    "USER_PROFILE_REQUIRED",
+				"message": "User profile not found in context",
+			},
+		})
+		return
+	}
 
 	input := usecases.CreateCorrectionInput{
 		OriginalEntryID: entryID,
 		Description:     req.Description,
-		CreatedByUserID: userID.(uuid.UUID),
+		CreatedByUserID: userProfile.Profile.ID,
 		Notes:           req.Notes,
 	}
 

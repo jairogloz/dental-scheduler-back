@@ -132,9 +132,8 @@ func (h *ReconciliationHandler) CreateReconciliation(c *gin.Context) {
 		return
 	}
 
-	// Get clinic ID - use organization ID as fallback
-	// In production, this should come from request or authenticated context
-	clinicID := organizationID
+	// Get clinic ID from user profile default clinic (validated by middleware)
+	clinicID := userProfile.Profile.DefaultClinicID.String()
 
 	userID := userProfile.Profile.ID.String()
 

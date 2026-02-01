@@ -189,6 +189,20 @@ func SupabaseAuth(logger *logger.Logger, userRepo repositories.UserRepository) g
 				logger.Logger.WithError(err).Warn("Failed to fetch user profile from database, using JWT data only")
 				// Continue with JWT data only, don't abort
 			} else {
+				// Check if user has default_clinic_id set
+				if userProfile.Profile.DefaultClinicID == nil {
+					logger.Logger.WithField("user_id", userProfile.Profile.ID).Warn("User does not have a default clinic set")
+					c.JSON(http.StatusBadRequest, gin.H{
+						"success": false,
+						"error": gin.H{
+							"code":    "DEFAULT_CLINIC_REQUIRED",
+							"message": "Your user profile must have a default clinic set. Please contact your administrator to set a default clinic.",
+						},
+					})
+					c.Abort()
+					return
+				}
+
 				// Use database data and set additional context
 				c.Set("user_profile", userProfile)
 				c.Set("organization", userProfile.Organization)
