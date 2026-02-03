@@ -27,6 +27,12 @@
 ## Get session details. Should show:
 
 - The right entries
+- the expected amounts:
+  - cash, mx, 1000
+  - cash usd 20
+  - card mx 1000
+  - card usd 0
+- payments_summary: not entirely sure
 
 ## Link to document with test
 

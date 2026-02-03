@@ -1,0 +1,168 @@
+{
+  "info": {
+    "_postman_id": "c7bf1f49-3b98-47b0-8f54-f5eed9c2aa12",
+    "name": "Integration Tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "30137577"
+  },
+  "item": [
+    {
+      "name": "Cash Session",
+      "item": [
+        {
+          "name": "Create Appointment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Parse the response body",
+                  "const response = pm.response.json();",
+                  "",
+                  "// Test that success is true",
+                  "pm.test(\"Response success is true\", function () {",
+                  "    pm.expect(response.success).to.be.true;",
+                  "});",
+                  "",
+                  "// Extract the appointment ID from data.id",
+                  "const appointment_id = response.data.id;",
+                  "",
+                  "// Set as environment variable",
+                  "pm.environment.set(\"appointment_id\", appointment_id);"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Get current time",
+                  "const now = new Date();",
+                  "",
+                  "// Add 1 hour and round to top of hour",
+                  "const startTime = new Date(now);",
+                  "startTime.setHours(startTime.getHours() + 1);",
+                  "startTime.setMinutes(0);",
+                  "startTime.setSeconds(0);",
+                  "startTime.setMilliseconds(0);",
+                  "",
+                  "// Add 30 minutes to start time for end time",
+                  "const endTime = new Date(startTime);",
+                  "endTime.setMinutes(endTime.getMinutes() + 30);",
+                  "",
+                  "// Format to ISO 8601 (RFC3339) format",
+                  "const start_time = startTime.toISOString();",
+                  "const end_time = endTime.toISOString();",
+                  "",
+                  "// Set as collection variables",
+                  "pm.collectionVariables.set(\"start_time\", start_time);",
+                  "pm.collectionVariables.set(\"end_time\", end_time);",
+                  "",
+                  "// Log for debugging",
+                  "//console.log(\"Start Time:\", start_time);",
+                  "//console.log(\"End Time:\", end_time);"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"patient_id\": \"e00e5987-dfe1-403a-a0f9-fc8742c017a3\",\n    \"doctor_id\": \"84f7652c-0ad6-4be3-b85e-04db69909f91\",\n    \"unit_id\": \"04107a69-1910-4b2e-9639-6f795c83f2cb\",\n    \"start_time\": \"{{start_time}}\",\n    \"end_time\": \"{{end_time}}\",\n    \"treatment_type\": \"limpieza\",\n    \"service_id\": \"srv_resinas_dentales\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "http://localhost:8080/api/v1/appointments",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "api",
+                "v1",
+                "appointments"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Appointment",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"status\": \"cancelled\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseURL}}/api/v1/appointments/{{appointment_id}}",
+              "host": [
+                "{{baseURL}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "appointments",
+                "{{appointment_id}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "start_time",
+      "value": ""
+    },
+    {
+      "key": "end_time",
+      "value": ""
+    },
+    {
+      "key": "appointment_id",
+      "value": ""
+    }
+  ]
+}
