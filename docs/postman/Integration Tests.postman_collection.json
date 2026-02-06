@@ -110,7 +110,105 @@
           "response": []
         },
         {
+          "name": "Get Appointment Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Parse the response body",
+                  "const response = pm.response.json();",
+                  "",
+                  "// Test that success is true",
+                  "pm.test(\"Response success is true\", function () {",
+                  "    pm.expect(response.success).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test(\"data exists\", function () {",
+                  "    pm.expect(response).to.have.property(\"data\");",
+                  "    pm.expect(response.data).to.be.an(\"object\");",
+                  "});",
+                  "",
+                  "pm.test(\"data.balance exists\", function () {",
+                  "    pm.expect(response.data).to.have.property(\"balance\");",
+                  "    pm.expect(response.data.balance).to.be.an(\"object\");",
+                  "});",
+                  "",
+                  "pm.test(\"data.balance totals are 0.0\", function () {",
+                  "    pm.expect(response.data.balance.total_charges_cents).to.eql(0);",
+                  "    pm.expect(response.data.balance.total_discounts_cents).to.eql(0);",
+                  "    pm.expect(response.data.balance.total_payments_cents).to.eql(0);",
+                  "    pm.expect(response.data.balance.total_refunds_cents).to.eql(0);",
+                  "    pm.expect(response.data.balance.balance_due_cents).to.eql(0);",
+                  "});",
+                  "",
+                  "pm.test(\"data.balance payments are empty\", function () {",
+                  "    pm.expect(response.data.balance.payments_by_currency).to.deep.eql({});",
+                  "    pm.expect(response.data.balance.payments_by_method).to.deep.eql({});",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "",
+                "type": "text",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{baseURL}}{{api}}/appointments/{{appointment_id}}/account",
+              "host": [
+                "{{baseURL}}{{api}}"
+              ],
+              "path": [
+                "appointments",
+                "{{appointment_id}}",
+                "account"
+              ]
+            },
+            "description": "Retrieves an appointment account with all entries (charges, payments, corrections) and balance information"
+          },
+          "response": []
+        },
+        {
           "name": "Cancel Appointment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Parse the response body",
+                  "const response = pm.response.json();",
+                  "",
+                  "// Test that success is true",
+                  "pm.test(\"Response success is true\", function () {",
+                  "    pm.expect(response.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
           "request": {
             "auth": {
               "type": "bearer",
