@@ -2,8 +2,7 @@
   "info": {
     "_postman_id": "c7bf1f49-3b98-47b0-8f54-f5eed9c2aa12",
     "name": "Integration Tests",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_exporter_id": "30137577"
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
@@ -71,6 +70,7 @@
               }
             }
           ],
+          "id": "46b87c96-fced-4f1e-aa1b-b999eb133e89",
           "request": {
             "auth": {
               "type": "bearer",
@@ -153,6 +153,7 @@
               }
             }
           ],
+          "id": "6b76912f-1b83-4df2-b6ad-891541eefed3",
           "request": {
             "auth": {
               "type": "bearer",
@@ -194,6 +195,7 @@
             {
               "listen": "test",
               "script": {
+                "id": "4e83e3ac-4d29-4b49-8ac0-1b4d13a160e6",
                 "exec": [
                   "// Parse the response body",
                   "const response = pm.response.json();",
@@ -207,8 +209,21 @@
                 "packages": {},
                 "requests": {}
               }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "id": "27984c4f-f3b1-4418-a617-84048bb23ec2",
+                "exec": [
+                  ""
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
             }
           ],
+          "id": "6ab77a7d-2317-45df-b338-78760f575343",
           "request": {
             "auth": {
               "type": "bearer",
@@ -246,19 +261,23 @@
           },
           "response": []
         }
-      ]
+      ],
+      "id": "e748c9f2-4d05-4e8d-b502-4edbbe151a77"
     }
   ],
   "variable": [
     {
+      "id": "74642ad1-8d9d-45c9-b8c9-48115aebdbae",
       "key": "start_time",
       "value": ""
     },
     {
+      "id": "444e11ce-acfa-4718-8428-eb9d2799bf3a",
       "key": "end_time",
       "value": ""
     },
     {
+      "id": "03b4292d-8025-4034-b805-aebe2fcbacd2",
       "key": "appointment_id",
       "value": ""
     }
