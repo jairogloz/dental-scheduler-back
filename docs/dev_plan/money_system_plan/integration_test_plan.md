@@ -4,35 +4,44 @@
 
 ## Integration test flow
 
-- Open cash session with 500 floating
+### 1) Cash session setup
 
-1. Add charge on an appointment. Service 1, internal doctor -> 1500
-2. Check balance = 1500
-3. Add 2nd charge to an appointment. Service 2, external doctor -> 1500
-4. Check balance = 3000
-5. Add total correction for charge 2
-6. Check balance = 1500
-7. Add 2nd charge. Service 2, external doctor -> 1000
-8. Check balance = 2500
-9. Add first payment of 500, cash, mxn
-10. Add second payment of 25, cash, usd, exchange rate 1 usd -> 20 mxn
-11. check balance = 1500
-12. Add third payment of 1000, card, mxn
-13. check balance = 500
+1. Open cash session with starting float = 500 MXN.
 
-- Create charge on second appointment. Service 1, internal doctor -> 500
-- Add payment, 500, card, mxn
-- check balance = 0
+### 2) Appointment 1 flow
 
-## Get session details. Should show:
+1. Create appointment 1.
+2. Add charge #1: service 1, internal doctor, commission 30%, amount = 1500 MXN.
+3. Assert appointment 1 balance = 1500.
+4. Add charge #2: service 2, external doctor, doctor fee 500 MXN, amount = 1500 MXN.
+5. Assert appointment 1 balance = 3000.
+6. Add full correction for charge #2 (rollback full 1500 MXN).
+7. Assert appointment 1 balance = 1500.
+8. Add charge #3: service 2, external doctor, doctor fee 500 MXN, amount = 1000 MXN.
+9. Assert appointment 1 balance = 2500.
+10. Add payment #1: 500 MXN, cash.
+11. Add payment #2: 25 USD, cash, exchange rate 1 USD = 20 MXN.
+12. Assert appointment 1 balance = 1500.
+13. Add payment #3: 1000 MXN, card.
+14. Assert appointment 1 balance = 500.
 
-- The right entries
-- the expected amounts:
-  - cash, mx, 1000
-  - cash usd 20
-  - card mx 1000
-  - card usd 0
-- payments_summary: not entirely sure
+### 3) Appointment 2 flow
+
+1. Create appointment 2.
+2. Add charge: service 1, internal doctor, commission 30%, amount = 500 MXN.
+3. Add payment: 500 MXN, card.
+4. Assert appointment 2 balance = 0.
+
+### 4) Session details assertions
+
+Assert cash session details include the expected entries and raw currency buckets:
+
+- cash MXN = 1500 (500 opening float + 500 payment #1 + 500 MXN equivalent from USD payment)
+- cash USD = 25
+- card MXN = 1500 (1000 from appointment 1 + 500 from appointment 2)
+- card USD = 0
+
+For now, validate raw currency buckets only (no converted aggregate assertions).
 
 ## Link to document with test
 
