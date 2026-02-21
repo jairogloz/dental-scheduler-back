@@ -2,7 +2,8 @@
   "info": {
     "_postman_id": "c7bf1f49-3b98-47b0-8f54-f5eed9c2aa12",
     "name": "Integration Tests",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "30137577"
   },
   "item": [
     {
@@ -70,7 +71,6 @@
               }
             }
           ],
-          "id": "46b87c96-fced-4f1e-aa1b-b999eb133e89",
           "request": {
             "auth": {
               "type": "bearer",
@@ -153,7 +153,6 @@
               }
             }
           ],
-          "id": "6b76912f-1b83-4df2-b6ad-891541eefed3",
           "request": {
             "auth": {
               "type": "bearer",
@@ -190,12 +189,326 @@
           "response": []
         },
         {
+          "name": "Get Appointment Balance",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Parse the response body",
+                  "const response = pm.response.json();",
+                  "",
+                  "// Test HTTP status is 200",
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "// Test that success is true",
+                  "pm.test(\"Response success is true\", function () {",
+                  "    pm.expect(response.success).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test(\"data exists\", function () {",
+                  "    pm.expect(response).to.have.property(\"data\");",
+                  "    pm.expect(response.data).to.be.an(\"object\");",
+                  "});",
+                  "",
+                  "pm.test(\"data totals are 0\", function () {",
+                  "    pm.expect(response.data.total_charges_cents).to.eql(0);",
+                  "    pm.expect(response.data.total_discounts_cents).to.eql(0);",
+                  "    pm.expect(response.data.total_payments_cents).to.eql(0);",
+                  "    pm.expect(response.data.total_refunds_cents).to.eql(0);",
+                  "    pm.expect(response.data.balance_due_cents).to.eql(0);",
+                  "});",
+                  "",
+                  "pm.test(\"payments are empty\", function () {",
+                  "    pm.expect(response.data.payments_by_currency).to.deep.eql({});",
+                  "    pm.expect(response.data.payments_by_method).to.deep.eql({});",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseURL}}{{api}}/appointments/{{appointment_id}}/account/balance",
+              "host": [
+                "{{baseURL}}{{api}}"
+              ],
+              "path": [
+                "appointments",
+                "{{appointment_id}}",
+                "account",
+                "balance"
+              ]
+            },
+            "description": "Retrieves just the balance summary for an appointment (total charges, payments, discounts, balance due)"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Service Charge Internal",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Parse the response body",
+                  "const response = pm.response.json();",
+                  "",
+                  "// Test HTTP status is 201",
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"service_id\": \"{{service_id}}\",\n  \"doctor_id\": \"{{doctor_id}}\",\n  \"doctor_type\": \"internal\",\n  \"amount_cents\": 150000,\n  \"commission_pct\": 0.30,\n  \"currency\": \"MXN\",\n  \"description\": \"Blanqueamiento\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseURL}}{{api}}/appointments/{{appointment_id}}/account/charges",
+              "host": [
+                "{{baseURL}}{{api}}"
+              ],
+              "path": [
+                "appointments",
+                "{{appointment_id}}",
+                "account",
+                "charges"
+              ]
+            },
+            "description": "Generated from cURL: curl -X POST '{{baseURL}}{{api}}/appointments/{{appointment_id}}/account/charges' -H 'Content-Type: application/json' -H 'Authorization: Bearer {{token}}' -d '{\n  \"service_id\": \"{{service_id}}\",\n  \"doctor_id\": \"{{doctor_id}}\",\n  \"doctor_type\": \"internal\",\n  \"amount_cents\": 150000,\n  \"commission_pct\": 0.30,\n  \"currency\": \"MXN\",\n  \"description\": \"Blanqueamiento\"\n}'"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Service Charge External",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Parse the response body",
+                  "const response = pm.response.json();",
+                  "",
+                  "// Test HTTP status is 201",
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "// Extract the charge id",
+                  "const charge_id = response.data.id;",
+                  "",
+                  "// Set as environment variable",
+                  "pm.environment.set(\"charge_id\", charge_id);"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"service_id\": \"{{service_id}}\",\n  \"doctor_id\": \"{{doctor_id}}\",\n  \"doctor_type\": \"external\",\n  \"amount_cents\": 150000,\n  \"doctor_fee\": 50000,\n  \"currency\": \"MXN\",\n  \"description\": \"Blanqueamiento\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseURL}}{{api}}/appointments/{{appointment_id}}/account/charges",
+              "host": [
+                "{{baseURL}}{{api}}"
+              ],
+              "path": [
+                "appointments",
+                "{{appointment_id}}",
+                "account",
+                "charges"
+              ]
+            },
+            "description": "Generated from cURL: curl -X POST '{{baseURL}}{{api}}/appointments/{{appointment_id}}/account/charges' -H 'Content-Type: application/json' -H 'Authorization: Bearer {{token}}' -d '{\n  \"service_id\": \"{{service_id}}\",\n  \"doctor_id\": \"{{doctor_id}}\",\n  \"doctor_type\": \"internal\",\n  \"amount_cents\": 150000,\n  \"commission_pct\": 0.30,\n  \"currency\": \"MXN\",\n  \"description\": \"Blanqueamiento\"\n}'"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Correction (Discount)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Parse the response body",
+                  "const response = pm.response.json();",
+                  "",
+                  "// Test HTTP status is 201",
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correction_type\": \"discount\",\n  \"amount_cents\": 15000,\n  \"description\": \"Corrección\"\n}"
+            },
+            "url": {
+              "raw": "{{baseURL}}{{api}}/appointments/{{appointment_id}}/account/entries/{{charge_id}}/correct",
+              "host": [
+                "{{baseURL}}{{api}}"
+              ],
+              "path": [
+                "appointments",
+                "{{appointment_id}}",
+                "account",
+                "entries",
+                "{{charge_id}}",
+                "correct"
+              ]
+            },
+            "description": "Creates a correction entry (discount or refund) for an existing charge or payment"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Payment Copy",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Parse the response body",
+                  "const response = pm.response.json();",
+                  "",
+                  "// Test HTTP status is 201",
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount_cents\": 50000,\n  \"currency\": \"MXN\",\n  \"method\": \"cash\",\n  \"description\": \"Pago parcial en efectivo\",\n  \"payment_method\": \"cash\"\n}"
+            },
+            "url": {
+              "raw": "{{baseURL}}{{api}}/appointments/{{appointment_id}}/account/payments",
+              "host": [
+                "{{baseURL}}{{api}}"
+              ],
+              "path": [
+                "appointments",
+                "{{appointment_id}}",
+                "account",
+                "payments"
+              ]
+            },
+            "description": "Creates a payment entry. Payment methods: cash, card, transfer, check, other"
+          },
+          "response": []
+        },
+        {
           "name": "Cancel Appointment",
           "event": [
             {
               "listen": "test",
               "script": {
-                "id": "4e83e3ac-4d29-4b49-8ac0-1b4d13a160e6",
                 "exec": [
                   "// Parse the response body",
                   "const response = pm.response.json();",
@@ -209,21 +522,8 @@
                 "packages": {},
                 "requests": {}
               }
-            },
-            {
-              "listen": "prerequest",
-              "script": {
-                "id": "27984c4f-f3b1-4418-a617-84048bb23ec2",
-                "exec": [
-                  ""
-                ],
-                "type": "text/javascript",
-                "packages": {},
-                "requests": {}
-              }
             }
           ],
-          "id": "6ab77a7d-2317-45df-b338-78760f575343",
           "request": {
             "auth": {
               "type": "bearer",
@@ -261,23 +561,19 @@
           },
           "response": []
         }
-      ],
-      "id": "e748c9f2-4d05-4e8d-b502-4edbbe151a77"
+      ]
     }
   ],
   "variable": [
     {
-      "id": "74642ad1-8d9d-45c9-b8c9-48115aebdbae",
       "key": "start_time",
       "value": ""
     },
     {
-      "id": "444e11ce-acfa-4718-8428-eb9d2799bf3a",
       "key": "end_time",
       "value": ""
     },
     {
-      "id": "03b4292d-8025-4034-b805-aebe2fcbacd2",
       "key": "appointment_id",
       "value": ""
     }
