@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -34,6 +36,11 @@ func TestAppointmentIntegrationSuite(t *testing.T) {
 }
 
 func (s *appointmentIntegrationSuite) SetupSuite() {
+	loadedPath, loadErr := loadIntegrationEnvFile()
+	if loadErr != nil {
+		s.T().Fatalf("failed to load integration env file: %v", loadErr)
+	}
+
 	requiredVars := []string{
 		"INTEGRATION_API_URL",
 		"INTEGRATION_AUTH_TOKEN",
@@ -45,7 +52,13 @@ func (s *appointmentIntegrationSuite) SetupSuite() {
 
 	missing := missingEnvVars(requiredVars)
 	if len(missing) > 0 {
-		s.T().Fatalf("integration environment not configured, missing required vars: %s", strings.Join(missing, ", "))
+		cwd, _ := os.Getwd()
+		s.T().Fatalf(
+			"integration environment not configured, missing required vars: %s (cwd=%s, loaded_env_file=%s)",
+			strings.Join(missing, ", "),
+			cwd,
+			loadedPath,
+		)
 	}
 
 	s.apiURL = strings.TrimRight(os.Getenv("INTEGRATION_API_URL"), "/")
@@ -61,6 +74,33 @@ func (s *appointmentIntegrationSuite) SetupSuite() {
 	}
 
 	s.client = &http.Client{Timeout: 30 * time.Second}
+}
+
+func loadIntegrationEnvFile() (string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	candidates := []string{
+		filepath.Join(cwd, "tests", "integration", ".env.integration"),
+		filepath.Join(cwd, ".env.integration"),
+	}
+
+	for _, path := range candidates {
+		if _, statErr := os.Stat(path); statErr == nil {
+			if err := godotenv.Overload(path); err != nil {
+				return "", fmt.Errorf("could not parse %s: %w", path, err)
+			}
+			return path, nil
+		}
+	}
+
+	if err := godotenv.Overload(candidates...); err == nil {
+		return "(resolved by godotenv search)", nil
+	}
+
+	return "(not found)", nil
 }
 
 func (s *appointmentIntegrationSuite) postJSON(path string, payload any) (*http.Response, envelopeResponse, error) {
