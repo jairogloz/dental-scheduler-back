@@ -40,6 +40,24 @@ type sessionDetailsResponse struct {
 	PaymentSummary  map[string]map[string]int64 `json:"payment_summary"`
 }
 
+type appointmentAccountResponse struct {
+	Balance struct {
+		TotalChargesCents   int64 `json:"total_charges_cents"`
+		TotalDiscountsCents int64 `json:"total_discounts_cents"`
+		TotalPaymentsCents  int64 `json:"total_payments_cents"`
+		TotalRefundsCents   int64 `json:"total_refunds_cents"`
+		BalanceDueCents     int64 `json:"balance_due_cents"`
+	} `json:"balance"`
+	Entries []struct {
+		ID               string   `json:"id"`
+		Type             string   `json:"type"`
+		Currency         string   `json:"currency"`
+		AmountCents      int64    `json:"amount_cents"`
+		ExchangeRateUsed *float64 `json:"exchange_rate_used,omitempty"`
+		CorrectsEntryID  *string  `json:"corrects_entry_id,omitempty"`
+	} `json:"entries"`
+}
+
 func (s *appointmentIntegrationSuite) TestAccountingIntegrationFlow() {
 	sessionID := s.openCashSessionWithFloat(50000)
 
@@ -131,9 +149,11 @@ func (s *appointmentIntegrationSuite) TestAccountingIntegrationFlow() {
 	require.Equal(s.T(), int64(50000), details.Session.StartingFloatCents)
 	require.Equal(s.T(), "open", details.Session.Status)
 
-	require.Equal(s.T(), int64(150000), mapValueOrZero(details.ExpectedAmounts, "MXN"))
+	require.Equal(s.T(), int64(100000), mapValueOrZero(details.ExpectedAmounts, "MXN"))
 	require.Equal(s.T(), int64(2500), mapValueOrZero(details.ExpectedAmounts, "USD"))
 
+	require.Equal(s.T(), int64(50000), nestedMapValueOrZero(details.PaymentSummary, "cash", "MXN"))
+	require.Equal(s.T(), int64(2500), nestedMapValueOrZero(details.PaymentSummary, "cash", "USD"))
 	require.Equal(s.T(), int64(150000), nestedMapValueOrZero(details.PaymentSummary, "card", "MXN"))
 	require.Equal(s.T(), int64(0), nestedMapValueOrZero(details.PaymentSummary, "card", "USD"))
 }
@@ -312,7 +332,35 @@ func (s *appointmentIntegrationSuite) assertAppointmentBalance(appointmentID str
 	var balance accountBalanceResponse
 	err = json.Unmarshal(envelope.Data, &balance)
 	require.NoError(s.T(), err)
-	require.Equal(s.T(), expectedBalanceCents, balance.BalanceDueCents)
+
+	if balance.BalanceDueCents != expectedBalanceCents {
+		account := s.getAppointmentAccount(appointmentID)
+		require.Equal(
+			s.T(),
+			expectedBalanceCents,
+			balance.BalanceDueCents,
+			"balance mismatch. account totals: charges=%d discounts=%d payments=%d refunds=%d due=%d entries=%+v",
+			account.Balance.TotalChargesCents,
+			account.Balance.TotalDiscountsCents,
+			account.Balance.TotalPaymentsCents,
+			account.Balance.TotalRefundsCents,
+			account.Balance.BalanceDueCents,
+			account.Entries,
+		)
+	}
+}
+
+func (s *appointmentIntegrationSuite) getAppointmentAccount(appointmentID string) appointmentAccountResponse {
+	resp, envelope, err := s.doJSON(http.MethodGet, fmt.Sprintf("/api/v1/appointments/%s/account", appointmentID), nil)
+	require.NoError(s.T(), err)
+	require.Equal(s.T(), http.StatusOK, resp.StatusCode, "get account failed: %+v", envelope.Error)
+	requireNoAPIError(s.T(), envelope)
+
+	var account appointmentAccountResponse
+	err = json.Unmarshal(envelope.Data, &account)
+	require.NoError(s.T(), err)
+
+	return account
 }
 
 func (s *appointmentIntegrationSuite) getCashSessionDetails(sessionID string) sessionDetailsResponse {
