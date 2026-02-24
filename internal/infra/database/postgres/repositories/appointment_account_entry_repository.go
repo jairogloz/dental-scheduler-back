@@ -254,23 +254,33 @@ func (r *AppointmentAccountEntryPostgresRepository) GetBalance(ctx context.Conte
 		SELECT 
 			COALESCE(SUM(CASE WHEN type = 'service_charge' THEN amount_cents ELSE 0 END), 0) as total_charges,
 			COALESCE(SUM(CASE WHEN type = 'discount' THEN amount_cents ELSE 0 END), 0) as total_discounts,
-			COALESCE(SUM(CASE WHEN type = 'payment' THEN amount_cents ELSE 0 END), 0) as total_payments,
-			COALESCE(SUM(CASE WHEN type = 'refund' THEN amount_cents ELSE 0 END), 0) as total_refunds
+			COALESCE(SUM(CASE 
+				WHEN type = 'payment' AND currency = 'USD' THEN ROUND(amount_cents * COALESCE(exchange_rate_used, 1))
+				WHEN type = 'payment' THEN amount_cents
+				ELSE 0 
+			END), 0) as total_payments,
+			COALESCE(SUM(CASE 
+				WHEN type = 'refund' AND currency = 'USD' THEN ROUND(amount_cents * COALESCE(exchange_rate_used, 1))
+				WHEN type = 'refund' THEN amount_cents
+				ELSE 0 
+			END), 0) as total_refunds,
+			COALESCE(SUM(CASE WHEN type = 'correction' THEN amount_cents ELSE 0 END), 0) as total_corrections
 		FROM appointment_account_entries
 		WHERE appointment_account_id = $1`
 
-	var totalCharges, totalDiscounts, totalPayments, totalRefunds int64
+	var totalCharges, totalDiscounts, totalPayments, totalRefunds, totalCorrections int64
 	err := r.db.QueryRowContext(ctx, query, accountID).Scan(
 		&totalCharges,
 		&totalDiscounts,
 		&totalPayments,
 		&totalRefunds,
+		&totalCorrections,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate balance: %w", err)
 	}
 
-	balanceDue := totalCharges + totalDiscounts - totalPayments + totalRefunds
+	balanceDue := totalCharges + totalDiscounts - totalPayments + totalRefunds + totalCorrections
 
 	// Get payments by currency
 	paymentsByCurrency := make(map[entities.Currency]int64)

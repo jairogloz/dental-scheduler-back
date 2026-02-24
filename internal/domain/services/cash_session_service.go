@@ -165,6 +165,15 @@ func (s *CashSessionService) CalculateExpectedCash(
 	ctx context.Context,
 	sessionID uuid.UUID,
 ) (map[entities.Currency]int64, error) {
+	// Get session to include opening float in expected cash
+	session, err := s.cashSessionRepo.GetByID(ctx, sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get cash session: %w", err)
+	}
+	if session == nil {
+		return nil, entities.ErrCashSessionNotFound
+	}
+
 	// Get all cash payments for this session
 	payments, err := s.entryRepo.GetPaymentsByCashSession(ctx, sessionID)
 	if err != nil {
@@ -172,11 +181,15 @@ func (s *CashSessionService) CalculateExpectedCash(
 	}
 
 	// Extract cash payments only
-	cashPayments, ok := payments[entities.PaymentMethodCash]
-	if !ok {
-		// No cash payments
-		return make(map[entities.Currency]int64), nil
+	cashPayments := make(map[entities.Currency]int64)
+	if byCurrency, ok := payments[entities.PaymentMethodCash]; ok {
+		for currency, amount := range byCurrency {
+			cashPayments[currency] = amount
+		}
 	}
+
+	// Opening float is always in MXN
+	cashPayments[entities.CurrencyMXN] += session.StartingFloatCents
 
 	return cashPayments, nil
 }

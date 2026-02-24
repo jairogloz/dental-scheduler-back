@@ -153,15 +153,14 @@ func (uc *CreateAppointmentEntryUseCase) CreatePayment(ctx context.Context, inpu
 		return nil, fmt.Errorf("failed to get/create account: %w", err)
 	}
 
-	// For cash payments, get or create cash session
+	// For all payments, attach to the active cash session so session details
+	// include full payment summary by method and currency.
 	var cashSessionID *uuid.UUID
-	if input.PaymentMethod == entities.PaymentMethodCash {
-		session, err := uc.cashSessionService.GetOrCreateOpenSession(ctx, orgID, clinicID, sessionUserID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get/create cash session: %w", err)
-		}
-		cashSessionID = &session.ID
+	session, err := uc.cashSessionService.GetOrCreateOpenSession(ctx, orgID, clinicID, sessionUserID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get/create cash session: %w", err)
 	}
+	cashSessionID = &session.ID
 
 	// Create the payment
 	entry, err := uc.accountingService.CreatePayment(
