@@ -2,6 +2,17 @@
 
 1. Create an appointment
 
+## Current status (implemented)
+
+The core cashflow integration scenario is already implemented and passing in:
+
+- `tests/integration/create_appointment_test.go`
+- `tests/integration/accounting_flow_test.go`
+
+Validated with:
+
+- `go test ./tests/integration -v -count=1 -run TestAppointmentIntegrationSuite/TestAccountingIntegrationFlow`
+
 ## Integration test flow
 
 ### 1) Cash session setup
@@ -36,12 +47,40 @@
 
 Assert cash session details include the expected entries and raw currency buckets:
 
-- cash MXN = 1500 (500 opening float + 500 payment #1 + 500 MXN equivalent from USD payment)
+- cash MXN = 1000 (500 opening float + 500 payment #1)
 - cash USD = 25
 - card MXN = 1500 (1000 from appointment 1 + 500 from appointment 2)
 - card USD = 0
 
 For now, validate raw currency buckets only (no converted aggregate assertions).
+
+## Accomplished coverage checklist
+
+- [x] Open manual cash session with starting float.
+- [x] Appointment 1 charges, correction, and progressive balance assertions.
+- [x] Mixed-currency payments (MXN + USD cash, MXN card) with balance assertions.
+- [x] Appointment 2 charge/payment and zero balance assertion.
+- [x] Session details validation for raw currency buckets (`cash_mxn`, `cash_usd`, `card_mxn`, `card_usd`).
+- [x] Session payment summary validation by method and currency.
+
+## Next steps (proposed integration tests)
+
+### 1) Cash session close + reconciliation flow
+
+- Open session, execute payments, close session, request reconciliation preview, create reconciliation.
+- Assert expected vs. counted amounts and discrepancy fields.
+
+### 2) Validation and edge-case flow
+
+- Invalid exchange rate / missing exchange rate for USD payment.
+- Over-correction attempts and corrections against invalid/non-existent entries.
+- Duplicate/open-session conflict behavior with explicit status-code assertions.
+
+### 3) Auth and isolation flow
+
+- Missing/invalid token on protected accounting endpoints.
+- Cross-organization/cross-clinic access isolation for account and cash-session endpoints.
+- Assert proper `401/403/404` behavior and error codes.
 
 ## Link to document with test
 
